@@ -1,0 +1,16 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: donation_db
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: donation_app_cse3100
+    ports:
+      - "3307:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./database/migrations:/docker-entrypoint-initdb.d
+
+volumes:
+  db_data:
