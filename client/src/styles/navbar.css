@@ -52,6 +52,20 @@
 
 .wc-active-link{ color: var(--wc-orange) !important; }
 
+.wc-post-link {
+  background: linear-gradient(135deg, #ff8c42 0%, #ff6b35 100%);
+  color: white !important;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(255, 140, 66, 0.3);
+}
+
+.wc-post-link:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.4);
+}
+
 /* Right cluster */
 .wc-nav-right{
   display:flex;
@@ -70,7 +84,7 @@
   border:1px solid rgba(0,0,0,.08);
   border-radius:999px;
   padding: 8px 12px;
-  width: min(420px, 40vw);
+  width: min(360px, 35vw);
 }
 
 .wc-search-icon{
