@@ -47,7 +47,10 @@ export default function Register() {
 
     try {
       const res = await axios.post(`${API}/register`, form, {
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
       });
 
       if (res.data?.success) {
@@ -56,12 +59,27 @@ export default function Register() {
       } else {
         setError(res.data?.message || "Registration failed");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(
-        err?.response?.data?.message ||
-          "Registration failed. Check backend."
-      );
+
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const backendMessage = (err.response?.data as { message?: string } | undefined)?.message;
+
+        if (backendMessage) {
+          setError(backendMessage);
+        } else if (!err.response) {
+          setError("Cannot reach backend server. Ensure API is running and CORS allows your frontend port.");
+        } else if (status === 422) {
+          setError("Invalid registration input. Please check your data and try again.");
+        } else {
+          setError(`Registration failed (HTTP ${status}).`);
+        }
+
+        return;
+      }
+
+      setError("Registration failed due to an unexpected error.");
     }
   };
 
