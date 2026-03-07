@@ -11,6 +11,13 @@ Route::post('/items', [ItemController::class, 'store']);
 Route::put('/items/{id}', [ItemController::class, 'update']);
 Route::delete('/items/{id}', [ItemController::class, 'destroy']);
 
+// User donations routes
+Route::get('/user/donations/{userId}', [ItemController::class, 'getUserDonations']);
+
+// Admin routes
+Route::get('/admin/items/pending', [ItemController::class, 'getPendingItems']);
+Route::put('/admin/items/{id}/status', [ItemController::class, 'updateStatus']);
+
 Route::get('/categories', function () {
     $categories = DB::table('category')->get();
     return response()->json($categories);
