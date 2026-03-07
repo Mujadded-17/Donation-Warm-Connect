@@ -198,6 +198,7 @@ select.form-input {
   padding: 1rem;
   border-radius: 8px;
   border: 1px solid #e2e8f0;
+  max-width: 300px;
 }
 
 .checkbox-label {
