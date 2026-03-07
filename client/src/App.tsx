@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import NotFoundPage from "./pages/NotFoundPage";
 import Register from "./pages/Register";
 import PostDonation from "./pages/PostDonation";
+import MyDonations from "./pages/MyDonations";
 
 
 
@@ -19,6 +20,7 @@ function App() {
         <Route path="/explore" element={<ItemsPage />} />
         <Route path="/items" element={<ItemsPage />} />
         <Route path="/post-donation" element={<PostDonation />} />
+        <Route path="/my-donations" element={<MyDonations />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFoundPage />} />

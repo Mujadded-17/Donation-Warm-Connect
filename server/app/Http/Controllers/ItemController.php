@@ -9,7 +9,10 @@ class ItemController extends Controller
 {
     public function index()
     {
-        $items = DB::table('item')->get();
+        // Only show approved items on explore page
+        $items = DB::table('item')
+            ->where('status', 'approved')
+            ->get();
         return response()->json($items);
     }
 
@@ -57,6 +60,40 @@ class ItemController extends Controller
 
         return response()->json([
             'message' => 'Item deleted successfully'
+        ]);
+    }
+
+    // Get user's donations
+    public function getUserDonations($userId)
+    {
+        $items = DB::table('item')
+            ->where('donor_id', $userId)
+            ->orderBy('post_date', 'desc')
+            ->get();
+        
+        return response()->json($items);
+    }
+
+    // Get all pending items (for admin)
+    public function getPendingItems()
+    {
+        $items = DB::table('item')
+            ->orderBy('post_date', 'desc')
+            ->get();
+        
+        return response()->json($items);
+    }
+
+    // Update item status (for admin)
+    public function updateStatus(Request $request, $id)
+    {
+        DB::table('item')
+            ->where('item_id', $id)
+            ->update(['status' => $request->status]);
+
+        return response()->json([
+            'message' => 'Status updated successfully',
+            'status' => $request->status
         ]);
     }
 }
