@@ -31,7 +31,7 @@ export default function Login() {
 
         setMsg("✅ Login successful!");
 
-        setTimeout(() => nav("/"), 600);
+        setTimeout(() => nav("/dashboard"), 600);
       } else {
         setError(res.data?.message || "Login failed");
       }

@@ -6,7 +6,7 @@ import Login from "./pages/Login";
 import NotFoundPage from "./pages/NotFoundPage";
 import Register from "./pages/Register";
 import PostDonation from "./pages/PostDonation";
-import MyDonations from "./pages/MyDonations";
+import Dashboard from "./pages/Dashboard";
 
 
 
@@ -24,6 +24,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFoundPage />} />
+        <Route path="/dashboard" element={<Dashboard />} />
       </Routes>
     </>
   );
