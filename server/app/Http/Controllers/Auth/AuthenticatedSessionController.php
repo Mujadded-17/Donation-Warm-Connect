@@ -3,41 +3,50 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Auth\LoginRequest;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 
 class AuthenticatedSessionController extends Controller
 {
-    /**
-     * Handle an incoming authentication request.
-     *
-     * @param  \App\Http\Requests\Auth\LoginRequest  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(LoginRequest $request)
+    public function store(Request $request)
     {
-        $request->authenticate();
+        $request->validate([
+            'email' => ['required', 'email'],
+            'password' => ['required'],
+        ]);
 
-        $request->session()->regenerate();
+        $user = User::where('email', $request->email)->first();
 
-        return response()->noContent();
+        if (!$user || !Hash::check($request->password, $user->pass_hash)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Invalid email or password',
+            ], 401);
+        }
+
+        Auth::login($user);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Login successful',
+            'user' => [
+                'user_id' => $user->user_id,
+                'name' => $user->name,
+                'email' => $user->email,
+                'user_type' => $user->user_type,
+            ],
+        ]);
     }
 
-    /**
-     * Destroy an authenticated session.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function destroy(Request $request)
     {
-        Auth::guard('web')->logout();
+        Auth::logout();
 
-        $request->session()->invalidate();
-
-        $request->session()->regenerateToken();
-
-        return response()->noContent();
+        return response()->json([
+            'success' => true,
+            'message' => 'Logged out successfully',
+        ]);
     }
 }

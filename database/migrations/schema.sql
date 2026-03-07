@@ -1,6 +1,6 @@
 USE donation_app_cse3100;
 
-CREATE TABLE users (
+CREATE TABLE user (
   user_id INT AUTO_INCREMENT PRIMARY KEY,
   name VARCHAR(100) NOT NULL,
   email VARCHAR(191) UNIQUE NOT NULL,
@@ -29,9 +29,11 @@ CREATE TABLE item (
   post_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   donor_id INT NOT NULL,
   category_id INT NOT NULL,
-  FOREIGN KEY (donor_id) REFERENCES users(user_id)
+  CONSTRAINT fk_item_donor
+    FOREIGN KEY (donor_id) REFERENCES user(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (category_id) REFERENCES category(category_id)
+  CONSTRAINT fk_item_category
+    FOREIGN KEY (category_id) REFERENCES category(category_id)
     ON UPDATE CASCADE
 );
 
@@ -42,11 +44,14 @@ CREATE TABLE donation (
   receiver_id INT NOT NULL,
   request_date DATETIME DEFAULT CURRENT_TIMESTAMP,
   status VARCHAR(30) DEFAULT 'requested',
-  FOREIGN KEY (item_id) REFERENCES item(item_id)
+  CONSTRAINT fk_donation_item
+    FOREIGN KEY (item_id) REFERENCES item(item_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (donor_id) REFERENCES users(user_id)
+  CONSTRAINT fk_donation_donor
+    FOREIGN KEY (donor_id) REFERENCES user(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE,
-  FOREIGN KEY (receiver_id) REFERENCES users(user_id)
+  CONSTRAINT fk_donation_receiver
+    FOREIGN KEY (receiver_id) REFERENCES user(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -56,7 +61,8 @@ CREATE TABLE notification (
   type VARCHAR(50) NOT NULL,
   message TEXT NOT NULL,
   create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (user_id) REFERENCES users(user_id)
+  CONSTRAINT fk_notification_user
+    FOREIGN KEY (user_id) REFERENCES user(user_id)
     ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -68,6 +74,7 @@ CREATE TABLE password_resets (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   INDEX(user_id),
   INDEX(token_hash),
-  FOREIGN KEY (user_id) REFERENCES users(user_id)
+  CONSTRAINT fk_password_resets_user
+    FOREIGN KEY (user_id) REFERENCES user(user_id)
     ON DELETE CASCADE
 );
