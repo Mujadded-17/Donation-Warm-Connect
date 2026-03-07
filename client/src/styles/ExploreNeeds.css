@@ -51,7 +51,7 @@
   border: 1px solid #e4c8b6;
   border-radius: 14px;
   background: #f9f9f9;
-  padding: 12px 14px;
+  padding: 10px 12px;
   text-align: left;
   cursor: pointer;
   transition: 0.2s ease;
@@ -70,16 +70,16 @@
 
 .en-category-label {
   display: block;
-  font-weight: 800;
+  font-weight: 700;
   color: #222;
-  font-size: 22px;
+  font-size: 16px;
 }
 
 .en-category-count {
   display: block;
   margin-top: 2px;
   color: #666;
-  font-size: 16px;
+  font-size: 13px;
 }
 
 .en-list-section {
