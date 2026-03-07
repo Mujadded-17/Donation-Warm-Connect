@@ -55,14 +55,9 @@ export default function Navbar(): JSX.Element {
           <a href="#how">How it Works</a>
           <a href="#stories">Stories</a>
           {user && (
-            <>
-              <Link to="/post-donation" className="wc-post-link">
-                Post a Donation
-              </Link>
-              <Link to="/my-donations" className="wc-active-link">
-                My Donations
-              </Link>
-            </>
+            <Link to="/my-donations" className="wc-active-link">
+              My Donations
+            </Link>
           )}
         </nav>
 

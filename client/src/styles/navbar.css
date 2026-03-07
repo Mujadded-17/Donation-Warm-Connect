@@ -84,7 +84,7 @@
   border:1px solid rgba(0,0,0,.08);
   border-radius:999px;
   padding: 8px 12px;
-  width: min(420px, 40vw);
+  width: min(360px, 35vw);
 }
 
 .wc-search-icon{
