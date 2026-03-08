@@ -22,7 +22,7 @@ CREATE TABLE item (
   item_id INT AUTO_INCREMENT PRIMARY KEY,
   title VARCHAR(150) NOT NULL,
   description TEXT,
-  images TEXT,
+  images LONGTEXT,
   status VARCHAR(30) DEFAULT 'pending',
   delivery_available TINYINT(1) DEFAULT 0,
   pickup_location VARCHAR(255),
