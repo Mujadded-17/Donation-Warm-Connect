@@ -42,6 +42,8 @@ class ChatController extends Controller
 
     public function conversations(Request $request)
     {
+        $this->ensureChatMessageTable();
+
         $authUser = $request->user();
 
         if (!$authUser) {
@@ -121,6 +123,8 @@ class ChatController extends Controller
 
     public function getMessages(Request $request, $otherUserId)
     {
+        $this->ensureChatMessageTable();
+
         $authUser = $request->user();
 
         if (!$authUser) {
@@ -168,6 +172,8 @@ class ChatController extends Controller
 
     public function sendMessage(Request $request)
     {
+        $this->ensureChatMessageTable();
+
         $authUser = $request->user();
 
         if (!$authUser) {
