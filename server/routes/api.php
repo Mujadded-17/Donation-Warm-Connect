@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\ItemController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
@@ -23,5 +24,10 @@ Route::get('/categories', function () {
     return response()->json($categories);
 });
 
+// Auth routes
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+// Profile routes
+Route::get('/profile/{userId}', [ProfileController::class, 'show']);
+Route::put('/profile/{userId}', [ProfileController::class, 'update']);
