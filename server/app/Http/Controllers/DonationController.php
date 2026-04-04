@@ -68,7 +68,7 @@ class DonationController extends Controller
         DB::table('notification')->insert([
             'user_id' => $item->donor_id,
             'type' => 'item_request',
-            'message' => $receiver->name . ' wants to request the item ' . $item->title,
+            'message' => $receiver->name . ' (' . $receiver->email . ') requested item "' . $item->title . '".',
             'create_time' => now(),
         ]);
 
@@ -76,5 +76,104 @@ class DonationController extends Controller
             'success' => true,
             'message' => 'Request sent successfully',
         ], 201);
+    }
+
+    public function getIncomingRequests(Request $request, $donorId)
+    {
+        $authUser = $request->user();
+
+        if (!$authUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $isAdmin = strtolower((string) $authUser->user_type) === 'admin';
+        if ((int) $authUser->user_id !== (int) $donorId && !$isAdmin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
+        $requests = DB::table('donation as d')
+            ->join('item as i', 'i.item_id', '=', 'd.item_id')
+            ->join('user as r', 'r.user_id', '=', 'd.receiver_id')
+            ->where('d.donor_id', $donorId)
+            ->orderBy('d.request_date', 'desc')
+            ->select([
+                'd.donation_id',
+                'd.item_id',
+                'd.donor_id',
+                'd.receiver_id',
+                'd.status as donation_status',
+                'd.request_date',
+                'i.title as item_title',
+                'i.pickup_location',
+                'r.name as receiver_name',
+                'r.email as receiver_email',
+                'r.phone as receiver_phone',
+                'r.address as receiver_address',
+                'r.profile_url as receiver_profile_url',
+            ])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests,
+        ]);
+    }
+
+    public function decideRequest(Request $request, $donationId)
+    {
+        $validated = $request->validate([
+            'status' => ['required', 'in:approved,rejected'],
+        ]);
+
+        $authUser = $request->user();
+        if (!$authUser) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthenticated',
+            ], 401);
+        }
+
+        $donation = DB::table('donation')->where('donation_id', $donationId)->first();
+
+        if (!$donation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Donation request not found',
+            ], 404);
+        }
+
+        $isAdmin = strtolower((string) $authUser->user_type) === 'admin';
+        if ((int) $donation->donor_id !== (int) $authUser->user_id && !$isAdmin) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Forbidden',
+            ], 403);
+        }
+
+        DB::table('donation')
+            ->where('donation_id', $donationId)
+            ->update([
+                'status' => $validated['status'],
+            ]);
+
+        $item = DB::table('item')->where('item_id', $donation->item_id)->first();
+
+        DB::table('notification')->insert([
+            'user_id' => $donation->receiver_id,
+            'type' => 'request_' . $validated['status'],
+            'message' => 'Your request for item "' . ($item->title ?? 'Item') . '" was ' . $validated['status'] . '.',
+            'create_time' => now(),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Request ' . $validated['status'] . ' successfully',
+        ]);
     }
 }
