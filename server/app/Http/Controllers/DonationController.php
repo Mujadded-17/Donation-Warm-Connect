@@ -98,6 +98,15 @@ class DonationController extends Controller
             'status' => 'requested',
         ]);
 
+        $this->ensureChatMessageTable();
+
+        DB::table('chat_message')->insert([
+            'sender_id' => $receiver->user_id,
+            'receiver_id' => $item->donor_id,
+            'message' => 'Hi, I requested your item "' . $item->title . '". Please let me know next steps.',
+            'create_time' => now(),
+        ]);
+
         DB::table('notification')->insert([
             'user_id' => $item->donor_id,
             'type' => 'item_request',
