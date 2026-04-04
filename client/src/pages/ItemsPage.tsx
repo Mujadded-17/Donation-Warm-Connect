@@ -11,6 +11,7 @@ type Item = {
   pickup_location: string;
   status: string;
   category_id: number;
+  donor_id: number;
   images?: string;
 };
 
@@ -18,6 +19,13 @@ type Category = {
   category_id: number;
   name: string;
   icon?: string;
+};
+
+type User = {
+  user_id: number;
+  name?: string;
+  email?: string;
+  user_type?: string;
 };
 
 type NormalizedItem = Item & {
@@ -32,6 +40,7 @@ function ItemsPage() {
   const [activeCategory, setActiveCategory] = useState<number | "all">("all");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
+  const [requestingId, setRequestingId] = useState<number | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -40,8 +49,16 @@ function ItemsPage() {
         setError("");
 
         const [itemsRes, categoriesRes] = await Promise.all([
-          fetch(`${API}/items`),
-          fetch(`${API}/categories`),
+          fetch(`${API}/items`, {
+            headers: {
+              Accept: "application/json",
+            },
+          }),
+          fetch(`${API}/categories`, {
+            headers: {
+              Accept: "application/json",
+            },
+          }),
         ]);
 
         if (!itemsRes.ok) {
@@ -58,7 +75,8 @@ function ItemsPage() {
         setItems(Array.isArray(itemsData) ? itemsData : []);
         setCategories(Array.isArray(categoriesData) ? categoriesData : []);
       } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : "Failed to load data";
+        const message =
+          err instanceof Error ? err.message : "Failed to load data";
         setError(message);
         setItems([]);
         setCategories([]);
@@ -111,6 +129,81 @@ function ItemsPage() {
 
     return normalizedItems.filter((item) => item.category_id === activeCategory);
   }, [normalizedItems, activeCategory]);
+
+  const handleRequestItem = async (item: Item) => {
+    const rawUser = localStorage.getItem("user");
+    const token = localStorage.getItem("token") || "";
+
+    if (!rawUser) {
+      navigate("/login");
+      return;
+    }
+
+    let user: User | null = null;
+
+    try {
+      user = JSON.parse(rawUser) as User;
+    } catch {
+      navigate("/login");
+      return;
+    }
+
+    if (!user?.user_id) {
+      alert("Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    if (!token) {
+      alert("Authentication token not found. Please login again.");
+      navigate("/login");
+      return;
+    }
+
+    if ((user.user_type || "").toLowerCase() !== "receiver") {
+      alert("Only receivers can request items.");
+      return;
+    }
+
+    if (user.user_id === item.donor_id) {
+      alert("You cannot request your own item.");
+      return;
+    }
+
+    try {
+      setRequestingId(item.item_id);
+
+      const response = await fetch(`${API}/donations/request`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          item_id: item.item_id,
+          receiver_id: user.user_id,
+        }),
+      });
+
+      const data = (await response.json()) as {
+        success?: boolean;
+        message?: string;
+      };
+
+      if (!response.ok) {
+        throw new Error(data?.message || "Failed to request item");
+      }
+
+      alert(data?.message || "Request sent successfully.");
+    } catch (err: unknown) {
+      const message =
+        err instanceof Error ? err.message : "Failed to request item";
+      alert(message);
+    } finally {
+      setRequestingId(null);
+    }
+  };
 
   return (
     <div className="en-page">
@@ -165,7 +258,9 @@ function ItemsPage() {
 
         {loading && <div className="en-state">Loading items...</div>}
 
-        {!loading && error && <div className="en-state en-state-error">Error: {error}</div>}
+        {!loading && error && (
+          <div className="en-state en-state-error">Error: {error}</div>
+        )}
 
         {!loading && !error && visibleItems.length === 0 && (
           <div className="en-state">No items found in this category.</div>
@@ -177,7 +272,11 @@ function ItemsPage() {
               <article key={item.item_id} className="en-card">
                 <div className="en-card-image-wrap">
                   {item.images ? (
-                    <img src={item.images} alt={item.title} className="en-card-image" />
+                    <img
+                      src={item.images}
+                      alt={item.title}
+                      className="en-card-image"
+                    />
                   ) : (
                     <div className="en-card-placeholder">No Image</div>
                   )}
@@ -192,9 +291,10 @@ function ItemsPage() {
                   <button
                     type="button"
                     className="en-card-btn"
-                    onClick={() => navigate("/login")}
+                    onClick={() => handleRequestItem(item)}
+                    disabled={requestingId === item.item_id}
                   >
-                    Request Item
+                    {requestingId === item.item_id ? "Requesting..." : "Request Item"}
                   </button>
                 </div>
               </article>
