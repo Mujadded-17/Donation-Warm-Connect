@@ -39,23 +39,24 @@ export default function PostDonation() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Fetch categories on mount
   useEffect(() => {
     const fetchCategories = async () => {
       try {
         const response = await axios.get(`${API}/categories`, {
           headers: { Accept: "application/json" },
         });
-        
+
         if (response.data && Array.isArray(response.data)) {
           setCategories(response.data);
           if (response.data.length > 0) {
-            setForm((prev) => ({ ...prev, category_id: response.data[0].category_id }));
+            setForm((prev) => ({
+              ...prev,
+              category_id: response.data[0].category_id,
+            }));
           }
         }
       } catch (err) {
         console.error("Failed to fetch categories:", err);
-        // Set default categories if fetch fails
         setCategories([
           { category_id: 1, name: "Clothing" },
           { category_id: 2, name: "Food" },
@@ -79,13 +80,11 @@ export default function PostDonation() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      // Validate file type
       if (!file.type.startsWith("image/")) {
         setError("Please select a valid image file");
         return;
       }
 
-      // Validate file size (max 10MB)
       if (file.size > 10 * 1024 * 1024) {
         setError("Image size should not exceed 10MB");
         return;
@@ -117,7 +116,6 @@ export default function PostDonation() {
     setMsg("");
     setError("");
 
-    // Validate required fields
     if (!form.title.trim()) {
       setError("Item name is required");
       return;
@@ -133,10 +131,11 @@ export default function PostDonation() {
       return;
     }
 
-    // Get logged in user
     const userStr = localStorage.getItem("user");
-    if (!userStr) {
-      setError("Please login to post a donation");
+    const token = localStorage.getItem("token");
+
+    if (!userStr || !token) {
+      setError("Please login again");
       setTimeout(() => navigate("/login"), 1500);
       return;
     }
@@ -174,27 +173,26 @@ export default function PostDonation() {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
 
       if (res.status === 201) {
         setMsg("✅ Donation posted successfully! Awaiting admin approval.");
-        
-        // Reset form
+
         setForm({
           title: "",
           description: "",
           pickup_location: "",
           delivery_available: false,
-          category_id: 1,
+          category_id: categories.length > 0 ? categories[0].category_id : 1,
           images: "",
         });
         setImagePreview("");
 
-        // Redirect after delay
         setTimeout(() => {
-          navigate("/");
-        }, 2000);
+          navigate("/my-donations");
+        }, 1500);
       } else {
         setError(res.data?.message || "Failed to post donation");
       }
@@ -212,6 +210,8 @@ export default function PostDonation() {
           setError("Cannot reach backend server. Please ensure the API is running.");
         } else if (status === 401 || status === 403) {
           setError("Unauthorized. Please login again.");
+          localStorage.removeItem("user");
+          localStorage.removeItem("token");
           setTimeout(() => navigate("/login"), 1500);
         } else if (status === 422) {
           setError("Invalid data. Please check your inputs.");
@@ -227,12 +227,7 @@ export default function PostDonation() {
   };
 
   const handleCancel = () => {
-    if (
-      form.title ||
-      form.description ||
-      form.pickup_location ||
-      imagePreview
-    ) {
+    if (form.title || form.description || form.pickup_location || imagePreview) {
       if (window.confirm("Are you sure you want to cancel? Your changes will be lost.")) {
         navigate("/");
       }
@@ -253,182 +248,126 @@ export default function PostDonation() {
         {error && <div className="post-donation-message error">{error}</div>}
 
         <form onSubmit={handleSubmit} className="post-donation-form">
-          {/* Image Upload */}
           <div className="form-group">
             <label className="form-label">
               Item Image <span className="required">*</span>
             </label>
-            <div
-              className="image-upload-area"
-              onClick={handleImageClick}
-              role="button"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  handleImageClick();
-                }
-              }}
-            >
+
+            <div className="image-upload-container" onClick={handleImageClick}>
               {imagePreview ? (
-                <img
-                  src={imagePreview}
-                  alt="Preview"
-                  className="image-preview"
-                />
+                <img src={imagePreview} alt="Preview" className="image-preview" />
               ) : (
-                <div className="image-placeholder">
-                  <svg
-                    className="image-icon"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
-                    />
-                  </svg>
-                  <p className="upload-text">Click to upload image</p>
-                  <p className="upload-hint">PNG, JPG, GIF up to 10MB</p>
+                <div className="image-upload-placeholder">
+                  <span className="upload-icon">📷</span>
+                  <p>Click to upload image</p>
+                  <small>PNG, JPG, JPEG up to 10MB</small>
                 </div>
               )}
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleImageChange}
-                className="hidden-file-input"
-              />
             </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageChange}
+              style={{ display: "none" }}
+            />
           </div>
 
-          {/* Item Name */}
           <div className="form-group">
-            <label htmlFor="title" className="form-label">
+            <label className="form-label">
               Item Name <span className="required">*</span>
             </label>
             <input
-              id="title"
-              name="title"
               type="text"
-              placeholder="e.g., Winter Jacket, Books, etc."
+              name="title"
+              className="form-input"
+              placeholder="Enter item name"
               value={form.title}
               onChange={handleInputChange}
-              className="form-input"
+              maxLength={100}
               required
             />
           </div>
 
-          {/* Description */}
           <div className="form-group">
-            <label htmlFor="description" className="form-label">
+            <label className="form-label">
               Description <span className="required">*</span>
             </label>
             <textarea
-              id="description"
               name="description"
-              placeholder="Provide details about the item, its condition, and why you're donating it..."
+              className="form-textarea"
+              placeholder="Describe the item condition, size, etc."
               value={form.description}
               onChange={handleInputChange}
-              className="form-textarea"
-              rows={5}
+              rows={4}
+              maxLength={500}
               required
             />
           </div>
 
-          {/* Category */}
           <div className="form-group">
-            <label htmlFor="category_id" className="form-label">
+            <label className="form-label">
               Category <span className="required">*</span>
             </label>
             <select
-              id="category_id"
               name="category_id"
+              className="form-select"
               value={form.category_id}
               onChange={(e) =>
                 setForm((prev) => ({
                   ...prev,
-                  category_id: parseInt(e.target.value, 10),
+                  category_id: Number(e.target.value),
                 }))
               }
-              className="form-input"
               required
             >
-              {categories.map((cat) => (
-                <option key={cat.category_id} value={cat.category_id}>
-                  {cat.icon ? `${cat.icon} ` : ""}{cat.name}
+              {categories.map((category) => (
+                <option key={category.category_id} value={category.category_id}>
+                  {category.name}
                 </option>
               ))}
             </select>
           </div>
 
-          {/* Pickup Location */}
           <div className="form-group">
-            <label htmlFor="pickup_location" className="form-label">
+            <label className="form-label">
               Pickup Location <span className="required">*</span>
             </label>
             <input
-              id="pickup_location"
-              name="pickup_location"
               type="text"
-              placeholder="e.g., Brooklyn, NY"
+              name="pickup_location"
+              className="form-input"
+              placeholder="Enter pickup location"
               value={form.pickup_location}
               onChange={handleInputChange}
-              className="form-input"
+              maxLength={255}
               required
             />
           </div>
 
-          {/* Delivery Available */}
           <div className="form-group checkbox-group">
             <label className="checkbox-label">
               <input
                 type="checkbox"
                 checked={form.delivery_available}
                 onChange={handleCheckboxChange}
-                className="form-checkbox"
               />
               <span>Delivery available</span>
             </label>
           </div>
 
-          {/* Info Message */}
-          <div className="info-message">
-            <svg
-              className="info-icon"
-              fill="currentColor"
-              viewBox="0 0 20 20"
-            >
-              <path
-                fillRule="evenodd"
-                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <p>
-              Your donation request will be reviewed by an admin. Once approved,
-              it will appear on the browsing page for others to see and request.
-            </p>
-          </div>
-
-          {/* Action Buttons */}
           <div className="form-actions">
             <button
               type="button"
+              className="btn-secondary"
               onClick={handleCancel}
-              className="btn-cancel"
               disabled={loading}
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              className="btn-submit"
-              disabled={loading}
-            >
-              {loading ? "Submitting..." : "Submit Donation"}
+            <button type="submit" className="btn-primary" disabled={loading}>
+              {loading ? "Posting..." : "Post Donation"}
             </button>
           </div>
         </form>

@@ -34,12 +34,27 @@ export default function Navbar(): JSX.Element {
     };
   }, []);
 
-  const logout = (): void => {
-    localStorage.removeItem("user");
-    localStorage.removeItem("token");
+  const logout = async (): Promise<void> => {
+    try {
+      const token = localStorage.getItem("token");
 
-    window.dispatchEvent(new Event("auth-changed"));
-    navigate("/login");
+      if (token) {
+        await fetch("http://127.0.0.1:8000/api/logout", {
+          method: "POST",
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Logout request failed:", error);
+    } finally {
+      localStorage.removeItem("user");
+      localStorage.removeItem("token");
+      window.dispatchEvent(new Event("auth-changed"));
+      navigate("/login");
+    }
   };
 
   return (

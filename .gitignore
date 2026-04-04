@@ -1,22 +1,25 @@
-**/dist
-**/build
-**/vendor
+# Environment files
+.env
+server/.env
+client/.env
 
+# Dependencies
+node_modules/
+client/node_modules/
+server/vendor/
 
-**/node_modules
-**/public/hot
-**/public/storage
-**/storage/*.key
-**/vendor
-**/.env
-**/.env.production
-**/.env.backup
-**/.phpunit.result.cache
-**/docker-compose.override.yml
-**/Homestead.json
-**/Homestead.yaml
-**/npm-debug.log
-**/yarn-error.log
-**/.idea
-**/.vscode
-**/*.sqlite
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Build files
+dist/
+build/
+
+# Laravel cache
+server/storage/*.key
+server/storage/logs/*
+server/bootstrap/cache/*
