@@ -247,6 +247,32 @@
   cursor: pointer;
 }
 
+.dd-notificationBtn{
+  border: 1px solid var(--dd-line);
+  background: #fff;
+  height: 40px;
+  border-radius: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  font-weight: 800;
+  color: #2b2b2b;
+}
+
+.dd-notificationCount{
+  min-width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: var(--dd-accent);
+  color: #fff;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  padding: 0 6px;
+}
+
 .dd-miniAvatar{
   width: 40px;
   height: 40px;
@@ -677,6 +703,97 @@
 .dd-emptyText{
   font-weight: 650;
 }
+
+.dd-requestCard{
+  border: 1px solid var(--dd-line);
+  border-radius: 16px;
+  background: #fff;
+  padding: 14px;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.05);
+}
+
+.dd-requestHead{
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dd-requestTitle{
+  font-weight: 900;
+  font-size: 15px;
+  color: #1f1f1f;
+}
+
+.dd-requestTime{
+  margin-top: 5px;
+  color: #8a8a8a;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dd-requestStatus{
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.5px;
+  border-radius: 999px;
+  padding: 6px 10px;
+}
+
+.dd-requestStatus.is-requested{
+  background: #fff3e9;
+  color: #a24a00;
+}
+
+.dd-requestStatus.is-approved{
+  background: #eaf8ee;
+  color: #1f7a3d;
+}
+
+.dd-requestStatus.is-rejected{
+  background: #fdecec;
+  color: #b13333;
+}
+
+.dd-requestDetails{
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+  color: #4f4f4f;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.dd-requestActions{
+  margin-top: 14px;
+  display: flex;
+  gap: 8px;
+}
+
+.dd-requestApprove,
+.dd-requestReject{
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.dd-requestApprove{
+  background: #1e7a42;
+  color: #fff;
+}
+
+.dd-requestReject{
+  background: #bf3c3c;
+  color: #fff;
+}
+
+.dd-requestApprove:disabled,
+.dd-requestReject:disabled{
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .dd-avatarImg {
   width: 100%;
   height: 100%;
@@ -723,7 +840,7 @@
 
 @media (max-width: 1100px){
   .dd{ grid-template-columns: 260px 1fr; }
-  .dd-stats{ grid-template-columns: 1fr; }
+  .dd-stats{ grid-template-columns: 1fr 1fr; }
   .dd-listGrid{ grid-template-columns: 1fr; }
   .dd-bottomGrid{ grid-template-columns: 1fr; }
   .dd-search{ min-width: 200px; }
@@ -732,4 +849,5 @@
 @media (max-width: 820px){
   .dd{ grid-template-columns: 1fr; }
   .dd-sidebar{ position: sticky; top: 0; z-index: 20; }
+  .dd-stats{ grid-template-columns: 1fr; }
 }

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "../../styles/donorDashboard.css";
 import { Link } from "react-router-dom";
+import ChatPanel from "../chat/ChatPanel";
 
 const API = "http://127.0.0.1:8000/api";
 
@@ -16,8 +17,24 @@ type User = {
 };
 
 type MenuKey = "dashboard" | "offer" | "impact" | "inbox";
-type TabKey = "donations" | "requests" | "community";
+type TabKey = "donations" | "requests" | "messages" | "community";
 type DonationSubTabKey = "active" | "past";
+
+type IncomingRequest = {
+  donation_id: number;
+  item_id: number;
+  donor_id: number;
+  receiver_id: number;
+  donation_status: string;
+  request_date?: string;
+  item_title?: string;
+  pickup_location?: string;
+  receiver_name?: string;
+  receiver_email?: string;
+  receiver_phone?: string;
+  receiver_address?: string;
+  receiver_profile_url?: string | null;
+};
 
 type DonationItem = {
   item_id?: number;
@@ -55,6 +72,20 @@ type EmptyStateProps = {
   text: string;
 };
 
+type RequestNotificationCardProps = {
+  request: IncomingRequest;
+  isUpdating: boolean;
+  onApprove: () => void;
+  onReject: () => void;
+};
+
+type NotificationItem = {
+  notify_id?: number;
+  type?: string;
+  message?: string;
+  create_time?: string;
+};
+
 export default function DonorDashboard(): JSX.Element {
   const rawUser = localStorage.getItem("user");
   const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
@@ -67,21 +98,41 @@ export default function DonorDashboard(): JSX.Element {
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingDonations, setLoadingDonations] = useState(true);
+  const [loadingRequests, setLoadingRequests] = useState(true);
   const [profileError, setProfileError] = useState("");
   const [donationError, setDonationError] = useState("");
+  const [requestError, setRequestError] = useState("");
   const [donations, setDonations] = useState<DonationItem[]>([]);
+  const [incomingRequests, setIncomingRequests] = useState<IncomingRequest[]>(
+    []
+  );
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(true);
+  const [actioningRequestId, setActioningRequestId] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     const fetchData = async () => {
       if (!storedUser?.user_id) {
         setLoadingProfile(false);
         setLoadingDonations(false);
+        setLoadingRequests(false);
+        setLoadingNotifications(false);
         return;
       }
 
+      const token = localStorage.getItem("token") || "";
+      const authHeaders = {
+        Accept: "application/json",
+        Authorization: `Bearer ${token}`,
+      };
+
       try {
         setLoadingProfile(true);
-        const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`);
+        const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`, {
+          headers: authHeaders,
+        });
 
         if (profileRes.data?.success) {
           const profileUser = profileRes.data.user as User;
@@ -100,7 +151,10 @@ export default function DonorDashboard(): JSX.Element {
       try {
         setLoadingDonations(true);
         const donationRes = await axios.get(
-          `${API}/user/donations/${storedUser.user_id}`
+          `${API}/user/donations/${storedUser.user_id}`,
+          {
+            headers: authHeaders,
+          }
         );
 
         const payload = donationRes.data;
@@ -122,6 +176,42 @@ export default function DonorDashboard(): JSX.Element {
         setDonations([]);
       } finally {
         setLoadingDonations(false);
+      }
+
+      try {
+        setLoadingRequests(true);
+        const requestRes = await axios.get(
+          `${API}/donations/incoming/${storedUser.user_id}`,
+          {
+            headers: authHeaders,
+          }
+        );
+
+        const payload = requestRes.data?.requests;
+        setIncomingRequests(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        console.error("Incoming request fetch failed:", error);
+        setRequestError("Failed to load request notifications.");
+        setIncomingRequests([]);
+      } finally {
+        setLoadingRequests(false);
+      }
+
+      try {
+        setLoadingNotifications(true);
+        const notificationRes = await axios.get(
+          `${API}/notifications/${storedUser.user_id}`,
+          {
+            headers: authHeaders,
+          }
+        );
+        const payload = notificationRes.data;
+        setNotifications(Array.isArray(payload) ? payload : []);
+      } catch (error) {
+        console.error("Notification fetch failed:", error);
+        setNotifications([]);
+      } finally {
+        setLoadingNotifications(false);
       }
     };
 
@@ -194,13 +284,64 @@ export default function DonorDashboard(): JSX.Element {
     const total = normalizedDonations.length;
     const active = activeListings.length;
     const completed = pastListings.length;
+    const pendingRequests = incomingRequests.filter(
+      (request) =>
+        String(request.donation_status || "").toLowerCase() === "requested"
+    ).length;
+    const unreadNotifications = notifications.filter(
+      (item) => String(item.type || "").toLowerCase() === "item_request"
+    ).length;
 
     return {
       totalDonations: total,
       activeDonations: active,
       completedDonations: completed,
+      pendingRequests,
+      unreadNotifications,
     };
-  }, [normalizedDonations, activeListings, pastListings]);
+  }, [
+    normalizedDonations,
+    activeListings,
+    pastListings,
+    incomingRequests,
+    notifications,
+  ]);
+
+  const handleRequestDecision = async (
+    donationId: number,
+    status: "approved" | "rejected"
+  ) => {
+    const token = localStorage.getItem("token") || "";
+
+    try {
+      setActioningRequestId(donationId);
+
+      await axios.put(
+        `${API}/donations/${donationId}/decision`,
+        { status },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      setIncomingRequests((prev) =>
+        prev.map((request) =>
+          request.donation_id === donationId
+            ? { ...request, donation_status: status }
+            : request
+        )
+      );
+    } catch (error) {
+      console.error("Failed to update request decision:", error);
+      alert("Failed to update request decision.");
+    } finally {
+      setActioningRequestId(null);
+    }
+  };
 
   const isLoading = loadingProfile || loadingDonations;
 
@@ -260,10 +401,27 @@ export default function DonorDashboard(): JSX.Element {
 
           <button
             className={`dd-navItem ${activeMenu === "inbox" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("inbox")}
+            onClick={() => {
+              setActiveMenu("inbox");
+              setActiveTab("requests");
+            }}
           >
             <span className="dd-ico">✉</span>
             Inbox
+              {stats.unreadNotifications > 0 && (
+                <span className="dd-badge">{stats.unreadNotifications}</span>
+              )}
+          </button>
+
+          <button
+            className={`dd-navItem ${activeMenu === "impact" && activeTab === "messages" ? "isActive" : ""}`}
+            onClick={() => {
+              setActiveMenu("impact");
+              setActiveTab("messages");
+            }}
+          >
+            <span className="dd-ico">💬</span>
+            Messages
           </button>
 
           <Link to="/profile" className="dd-navItem">
@@ -300,8 +458,20 @@ export default function DonorDashboard(): JSX.Element {
               <input placeholder="Find warmth..." />
             </div>
 
-            <button className="dd-iconBtn" aria-label="Notifications">
-              🔔
+            <button
+              className="dd-notificationBtn"
+              aria-label="Notifications"
+              onClick={() => {
+                setActiveMenu("inbox");
+                setActiveTab("requests");
+              }}
+              type="button"
+            >
+              <span>🔔</span>
+              <span>Notifications</span>
+              {stats.unreadNotifications > 0 && (
+                <span className="dd-notificationCount">{stats.unreadNotifications}</span>
+              )}
             </button>
 
             <Link to="/profile" className="dd-iconBtn" aria-label="Profile">
@@ -332,11 +502,11 @@ export default function DonorDashboard(): JSX.Element {
           </p>
         </section>
 
-        {(profileError || donationError) && (
+        {(profileError || donationError || requestError) && (
           <div className="dd-empty" style={{ marginBottom: "16px" }}>
             <div className="dd-emptyTitle">Some data could not be loaded</div>
             <div className="dd-emptyText">
-              {[profileError, donationError].filter(Boolean).join(" ")}
+              {[profileError, donationError, requestError].filter(Boolean).join(" ")}
             </div>
           </div>
         )}
@@ -360,6 +530,12 @@ export default function DonorDashboard(): JSX.Element {
             sub="Successfully finished donations"
             icon="✅"
           />
+          <StatCard
+            label="PENDING REQUESTS"
+            value={`${stats.pendingRequests}`}
+            sub="Need your approval"
+            icon="✉"
+          />
         </section>
 
         <section className="dd-panel">
@@ -372,7 +548,10 @@ export default function DonorDashboard(): JSX.Element {
             </button>
             <button
               className={`dd-tab ${activeTab === "requests" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("requests")}
+              onClick={() => {
+                setActiveTab("requests");
+                setActiveMenu("inbox");
+              }}
             >
               My Requests
             </button>
@@ -381,6 +560,15 @@ export default function DonorDashboard(): JSX.Element {
               onClick={() => setActiveTab("community")}
             >
               My Community
+            </button>
+            <button
+              className={`dd-tab ${activeTab === "messages" ? "isActive" : ""}`}
+              onClick={() => {
+                setActiveTab("messages");
+                setActiveMenu("impact");
+              }}
+            >
+              Messages
             </button>
 
             <div className="dd-tabsRight">
@@ -428,6 +616,55 @@ export default function DonorDashboard(): JSX.Element {
                   text="No real backend data is available for this section yet."
                 />
               )
+            ) : activeTab === "requests" ? (
+              loadingRequests ? (
+                <EmptyState
+                  title="Loading request notifications..."
+                  text="Please wait while incoming requests are fetched."
+                />
+              ) : incomingRequests.length > 0 ? (
+                incomingRequests.map((request) => (
+                  <RequestNotificationCard
+                    key={request.donation_id}
+                    request={request}
+                    isUpdating={actioningRequestId === request.donation_id}
+                    onApprove={() =>
+                      handleRequestDecision(request.donation_id, "approved")
+                    }
+                    onReject={() =>
+                      handleRequestDecision(request.donation_id, "rejected")
+                    }
+                  />
+                ))
+              ) : loadingNotifications ? (
+                <EmptyState
+                  title="Loading notifications..."
+                  text="Fetching donor notifications from server."
+                />
+              ) : notifications.length > 0 ? (
+                notifications.map((note, idx) => (
+                  <div className="dd-requestCard" key={note.notify_id || idx}>
+                    <div className="dd-requestHead">
+                      <div className="dd-requestTitle">
+                        {note.message || "New notification"}
+                      </div>
+                      <div className="dd-requestStatus is-requested">
+                        {String(note.type || "notice").toUpperCase()}
+                      </div>
+                    </div>
+                    <div className="dd-requestTime">
+                      {formatRelativeTime(note.create_time || "")}
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <EmptyState
+                  title="No incoming requests"
+                  text="When a receiver requests your item, details will appear here."
+                />
+              )
+            ) : activeTab === "messages" ? (
+              <ChatPanel currentUser={user} apiBase={API} />
             ) : (
               <EmptyState
                 title="No backend data available"
@@ -544,6 +781,73 @@ function ListingCard({ item }: ListingCardProps): JSX.Element {
           )}
         </div>
       </div>
+    </div>
+  );
+}
+
+function RequestNotificationCard({
+  request,
+  isUpdating,
+  onApprove,
+  onReject,
+}: RequestNotificationCardProps): JSX.Element {
+  const status = String(request.donation_status || "requested").toLowerCase();
+  const statusLabel = status.toUpperCase();
+  const canDecide = status === "requested";
+
+  return (
+    <div className="dd-requestCard">
+      <div className="dd-requestHead">
+        <div>
+          <div className="dd-requestTitle">
+            {request.receiver_name || "A receiver"} requested{" "}
+            {request.item_title || "your item"}
+          </div>
+          <div className="dd-requestTime">
+            {formatRelativeTime(request.request_date || "")}
+          </div>
+        </div>
+        <div className={`dd-requestStatus is-${status}`}>{statusLabel}</div>
+      </div>
+
+      <div className="dd-requestDetails">
+        <div>
+          <strong>Receiver:</strong> {request.receiver_name || "N/A"}
+        </div>
+        <div>
+          <strong>Email:</strong> {request.receiver_email || "N/A"}
+        </div>
+        <div>
+          <strong>Phone:</strong> {request.receiver_phone || "Not provided"}
+        </div>
+        <div>
+          <strong>Address:</strong> {request.receiver_address || "Not provided"}
+        </div>
+        <div>
+          <strong>Pickup:</strong> {request.pickup_location || "Not specified"}
+        </div>
+      </div>
+
+      {canDecide && (
+        <div className="dd-requestActions">
+          <button
+            type="button"
+            className="dd-requestApprove"
+            disabled={isUpdating}
+            onClick={onApprove}
+          >
+            {isUpdating ? "Updating..." : "Permit"}
+          </button>
+          <button
+            type="button"
+            className="dd-requestReject"
+            disabled={isUpdating}
+            onClick={onReject}
+          >
+            Reject
+          </button>
+        </div>
+      )}
     </div>
   );
 }
