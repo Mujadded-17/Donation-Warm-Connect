@@ -4,9 +4,42 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 class ChatController extends Controller
 {
+    private function ensureChatMessageTable(): void
+    {
+        if (Schema::hasTable('chat_message')) {
+            return;
+        }
+
+        Schema::create('chat_message', function (Blueprint $table) {
+            $table->increments('chat_id');
+            $table->unsignedInteger('sender_id');
+            $table->unsignedInteger('receiver_id');
+            $table->text('message');
+            $table->dateTime('create_time')->useCurrent();
+
+            $table->index('sender_id', 'idx_chat_message_sender');
+            $table->index('receiver_id', 'idx_chat_message_receiver');
+            $table->index('create_time', 'idx_chat_message_time');
+
+            $table->foreign('sender_id', 'fk_chat_message_sender')
+                ->references('user_id')
+                ->on('user')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+
+            $table->foreign('receiver_id', 'fk_chat_message_receiver')
+                ->references('user_id')
+                ->on('user')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
+        });
+    }
+
     public function conversations(Request $request)
     {
         $authUser = $request->user();
