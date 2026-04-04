@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
 import "../../styles/donorDashboard.css";
+import { Link } from "react-router-dom";
 
 type User = {
+  user_id?: number;
   name?: string;
   email?: string;
   user_type?: string;
+  phone?: string;
+  address?: string;
+  profile_url?: string | null;
 };
 
 type MenuKey = "dashboard" | "offer" | "impact" | "inbox";
@@ -58,6 +63,14 @@ export default function DonorDashboard(): JSX.Element {
     return "ADMIN";
   }, [user]);
 
+  const initials = useMemo(() => {
+    return displayName
+      .split(" ")
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  }, [displayName]);
+
   const stats = {
     warmthShared: 24,
     localConnections: 210,
@@ -101,11 +114,21 @@ export default function DonorDashboard(): JSX.Element {
 
         <div className="dd-profile">
           <div className="dd-avatar">
-            <span className="dd-avatarInner" />
+            {user?.profile_url ? (
+              <img
+                src={user.profile_url}
+                alt={displayName}
+                className="dd-avatarImg"
+              />
+            ) : (
+              <div className="dd-avatarFallback">{initials}</div>
+            )}
           </div>
+
           <div className="dd-profileMeta">
             <div className="dd-profileName">{displayName}</div>
             <div className="dd-profileRole">{roleLabel}</div>
+            <div className="dd-profileEmail">{user?.email || "No email"}</div>
           </div>
         </div>
 
@@ -118,13 +141,14 @@ export default function DonorDashboard(): JSX.Element {
             Dashboard
           </button>
 
-          <button
+          <Link
+            to="/post-donation"
             className={`dd-navItem ${activeMenu === "offer" ? "isActive" : ""}`}
             onClick={() => setActiveMenu("offer")}
           >
             <span className="dd-ico">✦</span>
             Offer a Gift
-          </button>
+          </Link>
 
           <button
             className={`dd-navItem ${activeMenu === "impact" ? "isActive" : ""}`}
@@ -142,12 +166,17 @@ export default function DonorDashboard(): JSX.Element {
             Inbox
             <span className="dd-badge">3</span>
           </button>
+
+          <Link to="/profile" className="dd-navItem">
+            <span className="dd-ico">👤</span>
+            My Profile
+          </Link>
         </nav>
 
         <div className="dd-sidebarBottom">
-          <button className="dd-createBtn">
+          <Link to="/post-donation" className="dd-createBtn">
             <span className="dd-plus">＋</span> Create New
-          </button>
+          </Link>
           <div className="dd-help">
             <span className="dd-helpIco">?</span> How warmConnect works
           </div>
@@ -157,8 +186,8 @@ export default function DonorDashboard(): JSX.Element {
       <main className="dd-main">
         <header className="dd-topbar">
           <div className="dd-topLinks">
-            <span className="dd-topLink">Home</span>
-            <span className="dd-topLink">Explore</span>
+            <Link to="/" className="dd-topLink">Home</Link>
+            <Link to="/explore" className="dd-topLink">Explore</Link>
             <span className="dd-topLink">Stories</span>
           </div>
 
@@ -171,11 +200,17 @@ export default function DonorDashboard(): JSX.Element {
             <button className="dd-iconBtn" aria-label="Notifications">
               🔔
             </button>
-            <button className="dd-iconBtn" aria-label="Settings">
-              ⚙️
-            </button>
+
+            <Link to="/profile" className="dd-iconBtn" aria-label="Profile">
+              👤
+            </Link>
+
             <div className="dd-miniAvatar" title={displayName}>
-              <span />
+              {user?.profile_url ? (
+                <img src={user.profile_url} alt={displayName} className="dd-miniAvatarImg" />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
           </div>
         </header>

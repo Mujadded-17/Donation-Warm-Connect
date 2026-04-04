@@ -8,7 +8,7 @@ import Register from "./pages/Register";
 import PostDonation from "./pages/PostDonation";
 import MyDonations from "./pages/MyDonations";
 import Dashboard from "./pages/Dashboard";
-
+import ProfilePage from "./pages/ProfilePage";
 
 
 
@@ -27,6 +27,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
         <Route path="*" element={<NotFoundPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
       </Routes>
     </>
   );

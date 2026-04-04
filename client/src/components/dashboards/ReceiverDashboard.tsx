@@ -1,10 +1,15 @@
 import { useMemo, useState } from "react";
 import "../../styles/receiverDashboard.css";
+import { Link } from "react-router-dom";
 
 type User = {
+  user_id?: number;
   name?: string;
   email?: string;
   user_type?: string;
+  phone?: string;
+  address?: string;
+  profile_url?: string | null;
 };
 
 type MenuKey = "dashboard" | "browse" | "requests" | "messages";
@@ -53,6 +58,14 @@ export default function ReceiverDashboard(): JSX.Element {
     return "ADMIN";
   }, [user]);
 
+  const initials = useMemo(() => {
+    return displayName
+      .split(" ")
+      .slice(0, 2)
+      .map((part) => part[0]?.toUpperCase())
+      .join("");
+  }, [displayName]);
+
   const stats = {
     matchesFound: 8,
     nearbyOffers: 17,
@@ -96,11 +109,21 @@ export default function ReceiverDashboard(): JSX.Element {
 
         <div className="rd-profile">
           <div className="rd-avatar">
-            <span className="rd-avatarInner" />
+            {user?.profile_url ? (
+              <img
+                src={user.profile_url}
+                alt={displayName}
+                className="rd-avatarImg"
+              />
+            ) : (
+              <div className="rd-avatarFallback">{initials}</div>
+            )}
           </div>
+
           <div className="rd-profileMeta">
             <div className="rd-profileName">{displayName}</div>
             <div className="rd-profileRole">{roleLabel}</div>
+            <div className="rd-profileEmail">{user?.email || "No email"}</div>
           </div>
         </div>
 
@@ -137,6 +160,11 @@ export default function ReceiverDashboard(): JSX.Element {
             Messages
             <span className="rd-badge">2</span>
           </button>
+
+          <Link to="/profile" className="rd-navItem">
+            <span className="rd-ico">👤</span>
+            My Profile
+          </Link>
         </nav>
 
         <div className="rd-sidebarBottom">
@@ -152,8 +180,8 @@ export default function ReceiverDashboard(): JSX.Element {
       <main className="rd-main">
         <header className="rd-topbar">
           <div className="rd-topLinks">
-            <span className="rd-topLink">Home</span>
-            <span className="rd-topLink">Explore</span>
+            <Link to="/" className="rd-topLink">Home</Link>
+            <Link to="/explore" className="rd-topLink">Explore</Link>
             <span className="rd-topLink">Stories</span>
           </div>
 
@@ -166,11 +194,21 @@ export default function ReceiverDashboard(): JSX.Element {
             <button className="rd-iconBtn" aria-label="Notifications">
               🔔
             </button>
-            <button className="rd-iconBtn" aria-label="Settings">
-              ⚙️
-            </button>
+
+            <Link to="/profile" className="rd-iconBtn" aria-label="Profile">
+              👤
+            </Link>
+
             <div className="rd-miniAvatar" title={displayName}>
-              <span />
+              {user?.profile_url ? (
+                <img
+                  src={user.profile_url}
+                  alt={displayName}
+                  className="rd-miniAvatarImg"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
             </div>
           </div>
         </header>
