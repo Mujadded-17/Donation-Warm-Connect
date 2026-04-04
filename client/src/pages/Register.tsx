@@ -53,7 +53,7 @@ export default function Register() {
         },
       });
 
-            if (res.data?.success) {
+      if (res.data?.success) {
         localStorage.setItem("user", JSON.stringify(res.data.user));
         localStorage.setItem("token", res.data.token);
 
@@ -99,12 +99,10 @@ export default function Register() {
 
         <div className="auth-panel auth-panel-right">
           <div className="auth-form-wrap">
-
             {msg && <div className="message success-message">{msg}</div>}
             {error && <div className="message error-message">{error}</div>}
 
             <form onSubmit={submit} className="auth-form">
-
               <input
                 name="name"
                 placeholder="Full Name"
@@ -171,7 +169,6 @@ export default function Register() {
             <p>
               Already registered? <Link to="/login">Login</Link>
             </p>
-
           </div>
         </div>
       </div>

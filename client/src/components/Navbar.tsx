@@ -34,7 +34,7 @@ export default function Navbar(): JSX.Element {
     };
   }, []);
 
-    const logout = async (): Promise<void> => {
+  const logout = async (): Promise<void> => {
     try {
       const token = localStorage.getItem("token");
 
