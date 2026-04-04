@@ -53,9 +53,14 @@ export default function Register() {
         },
       });
 
-      if (res.data?.success) {
+            if (res.data?.success) {
+        localStorage.setItem("user", JSON.stringify(res.data.user));
+        localStorage.setItem("token", res.data.token);
+
+        window.dispatchEvent(new Event("auth-changed"));
+
         setMsg("✅ Registered successfully!");
-        setTimeout(() => nav("/login"), 800);
+        setTimeout(() => nav("/dashboard"), 800);
       } else {
         setError(res.data?.message || "Registration failed");
       }
