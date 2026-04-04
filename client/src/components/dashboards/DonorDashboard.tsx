@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import "../../styles/donorDashboard.css";
 import { Link } from "react-router-dom";
+
+const API = "http://127.0.0.1:8000/api";
 
 type User = {
   user_id?: number;
@@ -16,17 +19,24 @@ type MenuKey = "dashboard" | "offer" | "impact" | "inbox";
 type TabKey = "donations" | "requests" | "community";
 type DonationSubTabKey = "active" | "past";
 
-type ListingItem = {
-  id: number;
-  status: string;
-  title: string;
-  time: string;
-  desc: string;
-  responses?: number;
+type DonationItem = {
+  item_id?: number;
+  id?: number;
+  item_name?: string;
+  title?: string;
+  item_title?: string;
+  description?: string;
+  item_desc?: string;
+  image_url?: string;
+  image?: string;
+  status?: string;
+  approval_status?: string;
+  created_at?: string;
+  posted_at?: string;
+  updated_at?: string;
+  category_name?: string;
   views?: number;
-  note?: string;
-  cta?: string;
-  image: string;
+  responses?: number;
 };
 
 type StatCardProps = {
@@ -37,7 +47,7 @@ type StatCardProps = {
 };
 
 type ListingCardProps = {
-  item: ListingItem;
+  item: DonationItem;
 };
 
 type EmptyStateProps = {
@@ -47,14 +57,78 @@ type EmptyStateProps = {
 
 export default function DonorDashboard(): JSX.Element {
   const rawUser = localStorage.getItem("user");
-  const user: User | null = rawUser ? JSON.parse(rawUser) : null;
+  const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
 
+  const [user, setUser] = useState<User | null>(storedUser);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("donations");
   const [donationSubTab, setDonationSubTab] =
     useState<DonationSubTabKey>("active");
 
-  const displayName = user?.name || user?.email?.split("@")?.[0] || "Alex";
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingDonations, setLoadingDonations] = useState(true);
+  const [profileError, setProfileError] = useState("");
+  const [donationError, setDonationError] = useState("");
+  const [donations, setDonations] = useState<DonationItem[]>([]);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!storedUser?.user_id) {
+        setLoadingProfile(false);
+        setLoadingDonations(false);
+        return;
+      }
+
+      try {
+        setLoadingProfile(true);
+        const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`);
+
+        if (profileRes.data?.success) {
+          const profileUser = profileRes.data.user as User;
+          setUser(profileUser);
+          localStorage.setItem("user", JSON.stringify(profileUser));
+        } else {
+          setProfileError("Could not load profile.");
+        }
+      } catch (error) {
+        console.error("Profile fetch failed:", error);
+        setProfileError("Failed to load profile.");
+      } finally {
+        setLoadingProfile(false);
+      }
+
+      try {
+        setLoadingDonations(true);
+        const donationRes = await axios.get(
+          `${API}/user/donations/${storedUser.user_id}`
+        );
+
+        const payload = donationRes.data;
+
+        if (Array.isArray(payload)) {
+          setDonations(payload);
+        } else if (Array.isArray(payload?.data)) {
+          setDonations(payload.data);
+        } else if (Array.isArray(payload?.items)) {
+          setDonations(payload.items);
+        } else if (Array.isArray(payload?.donations)) {
+          setDonations(payload.donations);
+        } else {
+          setDonations([]);
+        }
+      } catch (error) {
+        console.error("Donation fetch failed:", error);
+        setDonationError("Failed to load donations.");
+        setDonations([]);
+      } finally {
+        setLoadingDonations(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const displayName = user?.name || user?.email?.split("@")?.[0] || "Donor";
 
   const roleLabel = useMemo(() => {
     const t = (user?.user_type || "donor").toLowerCase();
@@ -71,38 +145,64 @@ export default function DonorDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
-  const stats = {
-    warmthShared: 24,
-    localConnections: 210,
-    neighborsHelped: 12,
-    kindnessSpark: 950,
-    topLabel: "Top 5% Giver",
-  };
+  const normalizedDonations = useMemo(() => {
+    return donations.map((item) => {
+      const statusRaw = String(
+        item.approval_status || item.status || "pending"
+      ).toLowerCase();
 
-  const activeListings: ListingItem[] = [
-    {
-      id: 1,
-      status: "AVAILABLE",
-      title: "Wooden Dining Table",
-      time: "2h ago",
-      desc: "Solid oak table in great condition. Fits 6 people. Pickup near Green Park. Hoping it finds a good home!",
-      responses: 3,
-      views: 12,
-      image:
-        "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1200&h=800&fit=crop",
-    },
-    {
-      id: 2,
-      status: "FINDING PICKUP",
-      title: "Kids Book Collection",
-      time: "Yesterday",
-      desc: "Box of 15 picture books for ages 3–7. Various classics and modern stories.",
-      note: "Promised to Sarah J.",
-      cta: "Complete Gift",
-      image:
-        "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=1200&h=800&fit=crop",
-    },
-  ];
+      return {
+        ...item,
+        _id: item.item_id || item.id || Math.random(),
+        _title:
+          item.item_name || item.title || item.item_title || "Untitled Donation",
+        _desc: item.description || item.item_desc || "No description provided.",
+        _image:
+          item.image_url ||
+          item.image ||
+          "https://via.placeholder.com/600x400?text=No+Image",
+        _status: statusRaw,
+        _time: formatRelativeTime(
+          item.created_at || item.posted_at || item.updated_at || ""
+        ),
+      };
+    });
+  }, [donations]);
+
+  const activeListings = useMemo(() => {
+    return normalizedDonations.filter(
+      (item: any) =>
+        item._status !== "completed" &&
+        item._status !== "received" &&
+        item._status !== "delivered"
+    );
+  }, [normalizedDonations]);
+
+  const pastListings = useMemo(() => {
+    return normalizedDonations.filter(
+      (item: any) =>
+        item._status === "completed" ||
+        item._status === "received" ||
+        item._status === "delivered"
+    );
+  }, [normalizedDonations]);
+
+  const shownListings =
+    donationSubTab === "active" ? activeListings : pastListings;
+
+  const stats = useMemo(() => {
+    const total = normalizedDonations.length;
+    const active = activeListings.length;
+    const completed = pastListings.length;
+
+    return {
+      totalDonations: total,
+      activeDonations: active,
+      completedDonations: completed,
+    };
+  }, [normalizedDonations, activeListings, pastListings]);
+
+  const isLoading = loadingProfile || loadingDonations;
 
   return (
     <div className="dd">
@@ -164,7 +264,6 @@ export default function DonorDashboard(): JSX.Element {
           >
             <span className="dd-ico">✉</span>
             Inbox
-            <span className="dd-badge">3</span>
           </button>
 
           <Link to="/profile" className="dd-navItem">
@@ -186,8 +285,12 @@ export default function DonorDashboard(): JSX.Element {
       <main className="dd-main">
         <header className="dd-topbar">
           <div className="dd-topLinks">
-            <Link to="/" className="dd-topLink">Home</Link>
-            <Link to="/explore" className="dd-topLink">Explore</Link>
+            <Link to="/" className="dd-topLink">
+              Home
+            </Link>
+            <Link to="/explore" className="dd-topLink">
+              Explore
+            </Link>
             <span className="dd-topLink">Stories</span>
           </div>
 
@@ -207,7 +310,11 @@ export default function DonorDashboard(): JSX.Element {
 
             <div className="dd-miniAvatar" title={displayName}>
               {user?.profile_url ? (
-                <img src={user.profile_url} alt={displayName} className="dd-miniAvatarImg" />
+                <img
+                  src={user.profile_url}
+                  alt={displayName}
+                  className="dd-miniAvatarImg"
+                />
               ) : (
                 <span>{initials}</span>
               )}
@@ -220,29 +327,38 @@ export default function DonorDashboard(): JSX.Element {
             Hello <span className="dd-nameAccent">{displayName}!</span>
           </h1>
           <p>
-            Welcome back to <span className="dd-accent">warmConnect</span>. Ready
-            to brighten someone&apos;s day today?
+            Welcome back to <span className="dd-accent">warmConnect</span>.
+            Manage your real donation activity here.
           </p>
         </section>
 
+        {(profileError || donationError) && (
+          <div className="dd-empty" style={{ marginBottom: "16px" }}>
+            <div className="dd-emptyTitle">Some data could not be loaded</div>
+            <div className="dd-emptyText">
+              {[profileError, donationError].filter(Boolean).join(" ")}
+            </div>
+          </div>
+        )}
+
         <section className="dd-stats">
           <StatCard
-            label="WARMTH SHARED"
-            value={`${stats.warmthShared} Items`}
-            sub={`+${stats.localConnections} local connections`}
-            icon="💡"
+            label="TOTAL DONATIONS"
+            value={`${stats.totalDonations}`}
+            sub="From your backend records"
+            icon="📦"
           />
           <StatCard
-            label="NEIGHBORS HELPED"
-            value={`${stats.neighborsHelped}`}
-            sub="Spreading kindness"
-            icon="👥"
+            label="ACTIVE LISTINGS"
+            value={`${stats.activeDonations}`}
+            sub="Currently available or pending"
+            icon="📢"
           />
           <StatCard
-            label="KINDNESS SPARK"
-            value={`${stats.kindnessSpark}`}
-            sub={stats.topLabel}
-            icon="✨"
+            label="COMPLETED GIFTS"
+            value={`${stats.completedDonations}`}
+            sub="Successfully finished donations"
+            icon="✅"
           />
         </section>
 
@@ -292,14 +408,30 @@ export default function DonorDashboard(): JSX.Element {
           )}
 
           <div className="dd-listGrid">
-            {activeTab === "donations" ? (
-              activeListings.map((item) => (
-                <ListingCard key={item.id} item={item} />
-              ))
+            {isLoading ? (
+              <EmptyState
+                title="Loading data..."
+                text="Please wait while your dashboard data is fetched."
+              />
+            ) : activeTab === "donations" ? (
+              shownListings.length > 0 ? (
+                shownListings.map((item: any) => (
+                  <ListingCard key={item._id} item={item} />
+                ))
+              ) : (
+                <EmptyState
+                  title={
+                    donationSubTab === "active"
+                      ? "No active donations found"
+                      : "No past donations found"
+                  }
+                  text="No real backend data is available for this section yet."
+                />
+              )
             ) : (
               <EmptyState
-                title="Nothing here yet"
-                text="This section will show data when you connect it to your backend."
+                title="No backend data available"
+                text="This section is intentionally empty until the backend endpoint is implemented."
               />
             )}
           </div>
@@ -309,19 +441,21 @@ export default function DonorDashboard(): JSX.Element {
           <div className="dd-box">
             <div className="dd-boxHead">
               <div>
-                <div className="dd-boxTitle">Your Local Impact Map</div>
+                <div className="dd-boxTitle">Donation Summary</div>
                 <div className="dd-boxSub">
-                  See the warmth spreading through your neighborhood.
+                  This section now reflects only backend-connected donor data.
                 </div>
               </div>
-              <button className="dd-mapBtn" aria-label="Map">
-                🗺️
+              <button className="dd-mapBtn" aria-label="Summary">
+                📊
               </button>
             </div>
 
             <div className="dd-mapMock">
-              <div className="dd-mapPin" />
-              <div className="dd-mapPill">Active Sharing Area</div>
+              <div className="dd-mapPill">
+                Total: {stats.totalDonations} | Active: {stats.activeDonations} |
+                Completed: {stats.completedDonations}
+              </div>
             </div>
           </div>
 
@@ -365,22 +499,38 @@ function StatCard({ label, value, sub, icon }: StatCardProps): JSX.Element {
 }
 
 function ListingCard({ item }: ListingCardProps): JSX.Element {
+  const title =
+    item.item_name || item.title || item.item_title || "Untitled Donation";
+  const desc = item.description || item.item_desc || "No description provided.";
+  const image =
+    item.image_url ||
+    item.image ||
+    "https://via.placeholder.com/600x400?text=No+Image";
+  const status = item.approval_status || item.status || "pending";
+  const time = formatRelativeTime(
+    item.created_at || item.posted_at || item.updated_at || ""
+  );
+
   return (
     <div className="dd-listCard">
       <div className="dd-listMedia">
-        <img src={item.image} alt={item.title} />
-        <div className="dd-chip">{item.status}</div>
+        <img src={image} alt={title} />
+        <div className="dd-chip">{String(status).toUpperCase()}</div>
       </div>
 
       <div className="dd-listBody">
         <div className="dd-listTitleRow">
-          <div className="dd-listTitle">{item.title}</div>
-          <div className="dd-listTime">{item.time}</div>
+          <div className="dd-listTitle">{title}</div>
+          <div className="dd-listTime">{time}</div>
         </div>
 
-        <div className="dd-listDesc">{item.desc}</div>
+        <div className="dd-listDesc">{desc}</div>
 
         <div className="dd-listFooter">
+          {item.category_name && (
+            <div className="dd-note">🏷️ {item.category_name}</div>
+          )}
+
           {typeof item.responses === "number" && (
             <div className="dd-metric">
               <span className="dd-metricIco">💬</span> {item.responses} Responses
@@ -392,18 +542,6 @@ function ListingCard({ item }: ListingCardProps): JSX.Element {
               <span className="dd-metricIco">👁️</span> {item.views} Views
             </div>
           )}
-
-          {item.note && <div className="dd-note">🏷️ {item.note}</div>}
-
-          <div className="dd-actions">
-            {item.cta ? (
-              <button className="dd-ctaBtn">{item.cta}</button>
-            ) : (
-              <button className="dd-ghostBtn" aria-label="Edit">
-                ✎
-              </button>
-            )}
-          </div>
         </div>
       </div>
     </div>
@@ -417,4 +555,25 @@ function EmptyState({ title, text }: EmptyStateProps): JSX.Element {
       <div className="dd-emptyText">{text}</div>
     </div>
   );
+}
+
+function formatRelativeTime(dateString: string): string {
+  if (!dateString) return "Unknown time";
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+
+  const now = new Date().getTime();
+  const diffMs = now - date.getTime();
+
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+
+  return date.toLocaleDateString();
 }

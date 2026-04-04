@@ -1,6 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import axios from "axios";
 import "../../styles/receiverDashboard.css";
 import { Link } from "react-router-dom";
+
+const API = "http://127.0.0.1:8000/api";
 
 type User = {
   user_id?: number;
@@ -15,15 +18,17 @@ type User = {
 type MenuKey = "dashboard" | "browse" | "requests" | "messages";
 type TabKey = "matched" | "saved" | "community";
 
-type RequestItem = {
-  id: number;
-  status: string;
-  title: string;
-  time: string;
-  desc: string;
-  location?: string;
-  donorName?: string;
-  image: string;
+type Item = {
+  item_id?: number;
+  title?: string;
+  description?: string;
+  images?: string;
+  status?: string;
+  delivery_available?: number | string;
+  pickup_location?: string;
+  donor_id?: number;
+  category_id?: number;
+  post_date?: string;
 };
 
 type StatCardProps = {
@@ -34,7 +39,7 @@ type StatCardProps = {
 };
 
 type RequestCardProps = {
-  item: RequestItem;
+  item: Item;
 };
 
 type EmptyStateProps = {
@@ -44,12 +49,64 @@ type EmptyStateProps = {
 
 export default function ReceiverDashboard(): JSX.Element {
   const rawUser = localStorage.getItem("user");
-  const user: User | null = rawUser ? JSON.parse(rawUser) : null;
+  const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
 
+  const [user, setUser] = useState<User | null>(storedUser);
+  const [items, setItems] = useState<Item[]>([]);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("matched");
 
-  const displayName = user?.name || user?.email?.split("@")?.[0] || "Friend";
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [profileError, setProfileError] = useState("");
+  const [itemError, setItemError] = useState("");
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (storedUser?.user_id) {
+        try {
+          setLoadingProfile(true);
+          const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`);
+
+          if (profileRes.data?.success) {
+            const profileUser = profileRes.data.user as User;
+            setUser(profileUser);
+            localStorage.setItem("user", JSON.stringify(profileUser));
+          } else {
+            setProfileError("Could not load profile.");
+          }
+        } catch (error) {
+          console.error("Failed to fetch receiver profile:", error);
+          setProfileError("Failed to load profile.");
+        } finally {
+          setLoadingProfile(false);
+        }
+      } else {
+        setLoadingProfile(false);
+      }
+
+      try {
+        setLoadingItems(true);
+        const itemRes = await axios.get(`${API}/items`);
+
+        if (Array.isArray(itemRes.data)) {
+          setItems(itemRes.data);
+        } else {
+          setItems([]);
+        }
+      } catch (error) {
+        console.error("Failed to fetch approved items:", error);
+        setItemError("Failed to load available items.");
+        setItems([]);
+      } finally {
+        setLoadingItems(false);
+      }
+    };
+
+    fetchData();
+  }, []);
+
+  const displayName = user?.name || user?.email?.split("@")?.[0] || "Receiver";
 
   const roleLabel = useMemo(() => {
     const t = (user?.user_type || "receiver").toLowerCase();
@@ -66,38 +123,24 @@ export default function ReceiverDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
-  const stats = {
-    matchesFound: 8,
-    nearbyOffers: 17,
-    successfulReceives: 5,
-    communityScore: 92,
-    topLabel: "Growing Support Network",
-  };
+  const stats = useMemo(() => {
+    const totalApproved = items.length;
+    const deliveryAvailable = items.filter(
+      (item) =>
+        String(item.delivery_available) === "1" ||
+        String(item.delivery_available).toLowerCase() === "true"
+    ).length;
 
-  const matchedItems: RequestItem[] = [
-    {
-      id: 1,
-      status: "MATCHED",
-      title: "Winter Clothes Bundle",
-      time: "1h ago",
-      desc: "Warm jackets and sweaters in good condition for adults and teens.",
-      location: "Mirpur, Dhaka",
-      donorName: "Amena S.",
-      image:
-        "https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?w=1200&h=800&fit=crop",
-    },
-    {
-      id: 2,
-      status: "PICKUP READY",
-      title: "Rice Cooker",
-      time: "Today",
-      desc: "Functional rice cooker, lightly used and cleaned, available for pickup.",
-      location: "Dhanmondi, Dhaka",
-      donorName: "Karim H.",
-      image:
-        "https://images.unsplash.com/photo-1585515656533-46995b3d60e2?w=1200&h=800&fit=crop",
-    },
-  ];
+    const pickupOnly = totalApproved - deliveryAvailable;
+
+    return {
+      totalApproved,
+      deliveryAvailable,
+      pickupOnly,
+    };
+  }, [items]);
+
+  const isLoading = loadingProfile || loadingItems;
 
   return (
     <div className="rd">
@@ -136,13 +179,14 @@ export default function ReceiverDashboard(): JSX.Element {
             Dashboard
           </button>
 
-          <button
+          <Link
+            to="/explore"
             className={`rd-navItem ${activeMenu === "browse" ? "isActive" : ""}`}
             onClick={() => setActiveMenu("browse")}
           >
             <span className="rd-ico">⌕</span>
             Browse Gifts
-          </button>
+          </Link>
 
           <button
             className={`rd-navItem ${activeMenu === "requests" ? "isActive" : ""}`}
@@ -158,7 +202,6 @@ export default function ReceiverDashboard(): JSX.Element {
           >
             <span className="rd-ico">✉</span>
             Messages
-            <span className="rd-badge">2</span>
           </button>
 
           <Link to="/profile" className="rd-navItem">
@@ -168,9 +211,9 @@ export default function ReceiverDashboard(): JSX.Element {
         </nav>
 
         <div className="rd-sidebarBottom">
-          <button className="rd-createBtn">
-            <span className="rd-plus">＋</span> Create Request
-          </button>
+          <Link to="/explore" className="rd-createBtn">
+            <span className="rd-plus">＋</span> Browse Support
+          </Link>
           <div className="rd-help">
             <span className="rd-helpIco">?</span> How warmConnect works
           </div>
@@ -180,8 +223,12 @@ export default function ReceiverDashboard(): JSX.Element {
       <main className="rd-main">
         <header className="rd-topbar">
           <div className="rd-topLinks">
-            <Link to="/" className="rd-topLink">Home</Link>
-            <Link to="/explore" className="rd-topLink">Explore</Link>
+            <Link to="/" className="rd-topLink">
+              Home
+            </Link>
+            <Link to="/explore" className="rd-topLink">
+              Explore
+            </Link>
             <span className="rd-topLink">Stories</span>
           </div>
 
@@ -218,29 +265,38 @@ export default function ReceiverDashboard(): JSX.Element {
             Welcome <span className="rd-nameAccent">{displayName}!</span>
           </h1>
           <p>
-            Here&apos;s your <span className="rd-accent">warmConnect</span> support
-            space. Find help, connect locally, and stay informed.
+            Browse real approved donations from{" "}
+            <span className="rd-accent">warmConnect</span>.
           </p>
         </section>
 
+        {(profileError || itemError) && (
+          <div className="rd-empty" style={{ marginBottom: "16px" }}>
+            <div className="rd-emptyTitle">Some data could not be loaded</div>
+            <div className="rd-emptyText">
+              {[profileError, itemError].filter(Boolean).join(" ")}
+            </div>
+          </div>
+        )}
+
         <section className="rd-stats">
           <StatCard
-            label="MATCHES FOUND"
-            value={`${stats.matchesFound}`}
-            sub={`+${stats.nearbyOffers} nearby offers`}
+            label="AVAILABLE ITEMS"
+            value={`${stats.totalApproved}`}
+            sub="Approved items from backend"
             icon="🎁"
           />
           <StatCard
-            label="SUCCESSFUL RECEIVES"
-            value={`${stats.successfulReceives}`}
-            sub="Support received"
-            icon="🤝"
+            label="DELIVERY AVAILABLE"
+            value={`${stats.deliveryAvailable}`}
+            sub="Items offering delivery"
+            icon="🚚"
           />
           <StatCard
-            label="COMMUNITY SCORE"
-            value={`${stats.communityScore}`}
-            sub={stats.topLabel}
-            icon="✨"
+            label="PICKUP ITEMS"
+            value={`${stats.pickupOnly}`}
+            sub="Items requiring pickup"
+            icon="📍"
           />
         </section>
 
@@ -250,7 +306,7 @@ export default function ReceiverDashboard(): JSX.Element {
               className={`rd-tab ${activeTab === "matched" ? "isActive" : ""}`}
               onClick={() => setActiveTab("matched")}
             >
-              Matched Offers
+              Available Offers
             </button>
             <button
               className={`rd-tab ${activeTab === "saved" ? "isActive" : ""}`}
@@ -267,18 +323,37 @@ export default function ReceiverDashboard(): JSX.Element {
 
             <div className="rd-tabsRight">
               <button className="rd-sortBtn">
-                <span className="rd-sortIco">≡</span> Recent first
+                <span className="rd-sortIco">≡</span> Approved items
               </button>
             </div>
           </div>
 
           <div className="rd-listGrid">
-            {activeTab === "matched" ? (
-              matchedItems.map((item) => <RequestCard key={item.id} item={item} />)
+            {isLoading ? (
+              <EmptyState
+                title="Loading data..."
+                text="Please wait while your receiver dashboard is fetched."
+              />
+            ) : activeTab === "matched" ? (
+              items.length > 0 ? (
+                items.map((item) => (
+                  <RequestCard key={item.item_id} item={item} />
+                ))
+              ) : (
+                <EmptyState
+                  title="No approved items found"
+                  text="There are currently no approved items available in the backend."
+                />
+              )
+            ) : activeTab === "saved" ? (
+              <EmptyState
+                title="No saved items endpoint available"
+                text="This section remains empty until a real saved items backend feature is added."
+              />
             ) : (
               <EmptyState
-                title="Nothing here yet"
-                text="This section will show data when you connect it to your backend."
+                title="No community endpoint available"
+                text="This section remains empty until a real community backend feature is added."
               />
             )}
           </div>
@@ -288,19 +363,20 @@ export default function ReceiverDashboard(): JSX.Element {
           <div className="rd-box">
             <div className="rd-boxHead">
               <div>
-                <div className="rd-boxTitle">Nearby Support Map</div>
+                <div className="rd-boxTitle">Receiver Summary</div>
                 <div className="rd-boxSub">
-                  See available support around your area.
+                  Real data from your profile and approved item listings.
                 </div>
               </div>
-              <button className="rd-mapBtn" aria-label="Map">
-                🗺️
+              <button className="rd-mapBtn" aria-label="Summary">
+                📄
               </button>
             </div>
 
             <div className="rd-mapMock">
-              <div className="rd-mapPin" />
-              <div className="rd-mapPill">Nearby Matching Zone</div>
+              <div className="rd-mapPill">
+                {user?.name || "No name"} | Available items: {stats.totalApproved}
+              </div>
             </div>
           </div>
 
@@ -344,32 +420,43 @@ function StatCard({ label, value, sub, icon }: StatCardProps): JSX.Element {
 }
 
 function RequestCard({ item }: RequestCardProps): JSX.Element {
+  const title = item.title || "Untitled Item";
+  const desc = item.description || "No description provided.";
+  const image = item.images || "https://via.placeholder.com/600x400?text=No+Image";
+  const location = item.pickup_location || "Location not provided";
+  const time = formatRelativeTime(item.post_date || "");
+  const deliveryAvailable =
+    String(item.delivery_available) === "1" ||
+    String(item.delivery_available).toLowerCase() === "true";
+
   return (
     <div className="rd-listCard">
       <div className="rd-listMedia">
-        <img src={item.image} alt={item.title} />
-        <div className="rd-chip">{item.status}</div>
+        <img src={image} alt={title} />
+        <div className="rd-chip">{String(item.status || "approved").toUpperCase()}</div>
       </div>
 
       <div className="rd-listBody">
         <div className="rd-listTitleRow">
-          <div className="rd-listTitle">{item.title}</div>
-          <div className="rd-listTime">{item.time}</div>
+          <div className="rd-listTitle">{title}</div>
+          <div className="rd-listTime">{time}</div>
         </div>
 
-        <div className="rd-listDesc">{item.desc}</div>
+        <div className="rd-listDesc">{desc}</div>
 
         <div className="rd-listFooter">
-          {item.location && (
-            <div className="rd-metric">
-              <span className="rd-metricIco">📍</span> {item.location}
-            </div>
-          )}
+          <div className="rd-metric">
+            <span className="rd-metricIco">📍</span> {location}
+          </div>
 
-          {item.donorName && <div className="rd-note">👤 {item.donorName}</div>}
+          <div className="rd-note">
+            {deliveryAvailable ? "🚚 Delivery Available" : "🏠 Pickup Only"}
+          </div>
 
           <div className="rd-actions">
-            <button className="rd-ctaBtn">View Details</button>
+            <Link to="/explore" className="rd-ctaBtn">
+              View More
+            </Link>
           </div>
         </div>
       </div>
@@ -384,4 +471,25 @@ function EmptyState({ title, text }: EmptyStateProps): JSX.Element {
       <div className="rd-emptyText">{text}</div>
     </div>
   );
+}
+
+function formatRelativeTime(dateString: string): string {
+  if (!dateString) return "Unknown time";
+
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return "Unknown time";
+
+  const now = new Date().getTime();
+  const diffMs = now - date.getTime();
+
+  const minutes = Math.floor(diffMs / (1000 * 60));
+  const hours = Math.floor(diffMs / (1000 * 60 * 60));
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (minutes < 1) return "Just now";
+  if (minutes < 60) return `${minutes}m ago`;
+  if (hours < 24) return `${hours}h ago`;
+  if (days < 7) return `${days}d ago`;
+
+  return date.toLocaleDateString();
 }
