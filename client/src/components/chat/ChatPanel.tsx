@@ -91,11 +91,13 @@ export default function ChatPanel({
     }
   };
 
-  const loadMessages = async (otherUserId: number) => {
+  const loadMessages = async (otherUserId: number, silent = false) => {
     if (!currentUserId) return;
 
     try {
-      setIsLoadingMessages(true);
+      if (!silent) {
+        setIsLoadingMessages(true);
+      }
       const response = await axios.get(`${apiBase}/chat/messages/${otherUserId}`, {
         headers: authHeaders,
       });
@@ -108,7 +110,9 @@ export default function ChatPanel({
       setMessages([]);
       setChatError("Failed to load messages.");
     } finally {
-      setIsLoadingMessages(false);
+      if (!silent) {
+        setIsLoadingMessages(false);
+      }
     }
   };
 
@@ -135,7 +139,7 @@ export default function ChatPanel({
     if (!selectedUserId) return;
 
     const messagePoll = setInterval(() => {
-      loadMessages(selectedUserId);
+      loadMessages(selectedUserId, true);
     }, 4000);
 
     return () => clearInterval(messagePoll);
