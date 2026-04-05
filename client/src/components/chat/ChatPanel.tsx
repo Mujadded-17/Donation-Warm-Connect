@@ -238,7 +238,7 @@ export default function ChatPanel({
                       className={`cp-bubble ${own ? "isOwn" : "isOther"}`}
                     >
                       <div>{message.message}</div>
-                      <div className="cp-bubbleTime">{formatRelativeTime(message.create_time || "")}</div>
+                      <div className="cp-bubbleTime">{formatMessageTime(message.create_time || "")}</div>
                     </div>
                   );
                 })
@@ -270,8 +270,8 @@ export default function ChatPanel({
 function formatRelativeTime(dateString: string): string {
   if (!dateString) return "";
 
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "";
+  const date = parseChatDate(dateString);
+  if (!date) return "";
 
   const diffMs = Date.now() - date.getTime();
   const minutes = Math.floor(diffMs / (1000 * 60));
@@ -284,4 +284,35 @@ function formatRelativeTime(dateString: string): string {
   if (days < 7) return `${days}d`;
 
   return date.toLocaleDateString();
+}
+
+function formatMessageTime(dateString: string): string {
+  if (!dateString) return "";
+
+  const parsed = parseChatDate(dateString);
+  if (!parsed) return "";
+
+  return parsed.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function parseChatDate(dateString: string): Date | null {
+  const raw = dateString.trim();
+  if (!raw) return null;
+
+  const normalized = raw.replace(" ", "T");
+  const hasTimezone = /[zZ]$|[+-]\d{2}:\d{2}$/.test(normalized);
+
+  // Backend chat timestamps are stored as UTC but may arrive without timezone info.
+  const utcCandidate = hasTimezone ? normalized : `${normalized.replace(/\.\d+$/, "")}Z`;
+  const parsed = new Date(utcCandidate);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
