@@ -95,3 +95,33 @@ CREATE TABLE password_resets (
     FOREIGN KEY (user_id) REFERENCES user(user_id)
     ON DELETE CASCADE
 );
+CREATE TABLE story (
+  story_id INT AUTO_INCREMENT PRIMARY KEY,
+  user_id INT NOT NULL,
+  title VARCHAR(200) NOT NULL,
+  content TEXT NOT NULL,
+  item_title VARCHAR(150),
+  image_url VARCHAR(255),
+  likes INT DEFAULT 0,
+  comments INT DEFAULT 0,
+  status VARCHAR(30) DEFAULT 'pending',
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  CONSTRAINT fk_story_user
+    FOREIGN KEY (user_id) REFERENCES user(user_id)
+    ON DELETE CASCADE ON UPDATE CASCADE
+);
+
+CREATE TABLE story_like (
+  like_id INT AUTO_INCREMENT PRIMARY KEY,
+  story_id INT NOT NULL,
+  user_id INT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT fk_story_like_story
+    FOREIGN KEY (story_id) REFERENCES story(story_id)
+    ON DELETE CASCADE,
+  CONSTRAINT fk_story_like_user
+    FOREIGN KEY (user_id) REFERENCES user(user_id)
+    ON DELETE CASCADE,
+  UNIQUE KEY unique_story_user (story_id, user_id)
+);

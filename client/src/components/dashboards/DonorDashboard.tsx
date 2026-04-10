@@ -51,6 +51,7 @@ type DonationItem = {
   created_at?: string;
   posted_at?: string;
   updated_at?: string;
+  post_date?: string;
   category_name?: string;
   views?: number;
   responses?: number;
@@ -168,6 +169,8 @@ export default function DonorDashboard(): JSX.Element {
 
         const payload = donationRes.data;
 
+        console.log("Raw donations from API:", payload); // Debug log
+
         if (Array.isArray(payload)) {
           setDonations(payload);
         } else if (Array.isArray(payload?.data)) {
@@ -250,10 +253,20 @@ export default function DonorDashboard(): JSX.Element {
   }, [displayName]);
 
   const normalizedDonations = useMemo(() => {
+    console.log("Processing donations for display:", donations);
+    
     return donations.map((item) => {
       const statusRaw = String(
         item.approval_status || item.status || "pending"
       ).toLowerCase();
+
+      // Get the date from post_date field
+      const dateString = item.post_date || item.created_at || item.posted_at || item.updated_at || "";
+      
+      console.log(`Item ID: ${item.item_id}, post_date: ${item.post_date}, using: ${dateString}`); // Debug log
+      
+      const formattedTime = formatRelativeTime(dateString);
+      console.log(`Formatted time for item ${item.item_id}: ${formattedTime}`); // Debug log
 
       return {
         ...item,
@@ -266,9 +279,7 @@ export default function DonorDashboard(): JSX.Element {
           item.image ||
           "https://via.placeholder.com/600x400?text=No+Image",
         _status: statusRaw,
-        _time: formatRelativeTime(
-          item.created_at || item.posted_at || item.updated_at || ""
-        ),
+        _time: formattedTime,
         _pickup_location: item.pickup_location || "Location not specified",
       };
     });
@@ -318,7 +329,8 @@ export default function DonorDashboard(): JSX.Element {
       (item: any) =>
         item._status !== "completed" &&
         item._status !== "received" &&
-        item._status !== "delivered"
+        item._status !== "delivered" &&
+        item._status !== "rejected"
     );
   }, [filteredDonations]);
 
@@ -327,7 +339,8 @@ export default function DonorDashboard(): JSX.Element {
       (item: any) =>
         item._status === "completed" ||
         item._status === "received" ||
-        item._status === "delivered"
+        item._status === "delivered" ||
+        item._status === "rejected"
     );
   }, [filteredDonations]);
 
@@ -538,16 +551,16 @@ export default function DonorDashboard(): JSX.Element {
       <main className="dd-main">
         <header className="dd-topbar">
           <div className="rd-topLinks">
-  <Link to="/" className="rd-topLink">
-    Home
-  </Link>
-  <Link to="/explore" className="rd-topLink">
-    Explore
-  </Link>
-  <Link to="/stories" className="rd-topLink">
-    Stories
-  </Link>
-</div>
+            <Link to="/" className="rd-topLink">
+              Home
+            </Link>
+            <Link to="/explore" className="rd-topLink">
+              Explore
+            </Link>
+            <Link to="/stories" className="rd-topLink">
+              Stories
+            </Link>
+          </div>
 
           <div className="dd-topRight">
             <div className="dd-search">
@@ -999,11 +1012,12 @@ function EmptyState({ title, text }: EmptyStateProps): JSX.Element {
   );
 }
 
+// EXACT SAME TIME FUNCTION AS RECEIVER DASHBOARD
 function formatRelativeTime(dateString: string): string {
-  if (!dateString) return "Unknown time";
+  if (!dateString) return "Date not available";
 
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return "Unknown time";
+  if (Number.isNaN(date.getTime())) return "Invalid date";
 
   const now = new Date().getTime();
   const diffMs = now - date.getTime();
