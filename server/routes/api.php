@@ -12,6 +12,7 @@ use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
 // Public routes
 Route::get('/items', [ItemController::class, 'index']);
+Route::get('/items/{itemId}/availability', [ItemController::class, 'checkAvailability']); // Add this line
 Route::get('/categories', function () {
     $categories = DB::table('category')->get();
     return response()->json($categories);

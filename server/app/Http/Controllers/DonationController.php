@@ -64,6 +64,19 @@ class DonationController extends Controller
             ], 404);
         }
 
+        // Check if item already has an approved request
+        $hasApprovedRequest = DB::table('donation')
+            ->where('item_id', $item->item_id)
+            ->where('status', 'approved')
+            ->exists();
+
+        if ($hasApprovedRequest) {
+            return response()->json([
+                'success' => false,
+                'message' => 'This item is no longer available',
+            ], 409);
+        }
+
         if (strtolower($receiver->user_type) !== 'receiver') {
             return response()->json([
                 'success' => false,
@@ -198,6 +211,23 @@ class DonationController extends Controller
             ], 403);
         }
 
+        // If approving, check if item already has another approved request
+        if ($validated['status'] === 'approved') {
+            $existingApproved = DB::table('donation')
+                ->where('item_id', $donation->item_id)
+                ->where('status', 'approved')
+                ->where('donation_id', '!=', $donationId)
+                ->exists();
+
+            if ($existingApproved) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'This item already has an approved request',
+                ], 409);
+            }
+        }
+
+        // Update the donation status
         DB::table('donation')
             ->where('donation_id', $donationId)
             ->update([
@@ -206,12 +236,19 @@ class DonationController extends Controller
 
         $item = DB::table('item')->where('item_id', $donation->item_id)->first();
 
+        // Send notification to receiver
         DB::table('notification')->insert([
             'user_id' => $donation->receiver_id,
             'type' => 'request_' . $validated['status'],
             'message' => 'Your request for item "' . ($item->title ?? 'Item') . '" was ' . $validated['status'] . '.',
             'create_time' => now(),
         ]);
+
+        // If rejected, you might want to send additional notification to donor about next steps
+        if ($validated['status'] === 'rejected') {
+            // Optionally notify other pending requesters that the item is still available
+            // This is optional and depends on your business logic
+        }
 
         return response()->json([
             'success' => true,
