@@ -90,6 +90,14 @@ type NotificationItem = {
   create_time?: string;
 };
 
+// ✅ FIX: Helper that accepts `string` instead of `TabKey`, preventing
+// TypeScript from narrowing the type inside renderContent() and incorrectly
+// flagging the "messages" comparison as having no overlap with
+// "donations" | "requests".
+function isTabActive(activeTab: string, tab: string): boolean {
+  return activeTab === tab;
+}
+
 export default function DonorDashboard(): JSX.Element {
   const rawUser = localStorage.getItem("user");
   const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
@@ -413,14 +421,16 @@ export default function DonorDashboard(): JSX.Element {
     setSearchTerm("");
   };
 
+  // Only show search when on donations or requests tab
+  const showSearch = activeTab === "donations" || activeTab === "requests";
+
   const getSearchPlaceholder = () => {
     if (activeTab === "donations") {
       return "Search your donations...";
     } else if (activeTab === "requests") {
       return "Search requests...";
-    } else {
-      return "Search...";
     }
+    return "Search...";
   };
 
   const getSearchOptions = () => {
@@ -438,24 +448,34 @@ export default function DonorDashboard(): JSX.Element {
           <option value="receiver">By Receiver Name</option>
         </>
       );
-    } else {
-      return <option value="title">Search</option>;
     }
+    return <option value="title">Search</option>;
   };
 
   const isLoading = loadingProfile || loadingDonations;
 
-  // Render the appropriate content based on activeMenu
+  // Render the appropriate content based on activeMenu and activeTab
   const renderContent = () => {
+    // Impact page
     if (activeMenu === "impact") {
       return <DonorImpact />;
     }
-    
+
+    // Community page
     if (activeMenu === "community") {
       return <CommunityPage />;
     }
-    
-    // Default dashboard view
+
+    // Messages/Chat - when activeTab is "messages"
+    // ✅ FIX: Use isTabActive() helper so TypeScript does not narrow `activeTab`
+    // to "donations" | "requests" before this check, which previously caused:
+    // "This comparison appears to be unintentional because the types
+    // '"donations" | "requests"' and '"messages"' have no overlap."
+    if (isTabActive(activeTab, "messages")) {
+      return <ChatPanel currentUser={user} apiBase={API} />;
+    }
+
+    // Default dashboard view (Donations and Requests)
     return (
       <>
         <section className="dd-greet">
@@ -466,7 +486,7 @@ export default function DonorDashboard(): JSX.Element {
             Welcome back to <span className="dd-accent">warmConnect</span>.
             Manage your real donation activity here.
           </p>
-          {searchTerm && (
+          {searchTerm && showSearch && (
             <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
               {activeTab === "donations" && (
                 <>Showing {shownListings.length} of {normalizedDonations.length} donations matching "{searchTerm}"</>
@@ -517,7 +537,7 @@ export default function DonorDashboard(): JSX.Element {
         <section className="dd-panel">
           <div className="dd-tabs">
             <button
-              className={`dd-tab ${activeTab === "donations" ? "isActive" : ""}`}
+              className={`dd-tab ${isTabActive(activeTab, "donations") ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("donations");
                 setSearchTerm("");
@@ -526,7 +546,7 @@ export default function DonorDashboard(): JSX.Element {
               My Donations
             </button>
             <button
-              className={`dd-tab ${activeTab === "requests" ? "isActive" : ""}`}
+              className={`dd-tab ${isTabActive(activeTab, "requests") ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("requests");
                 setActiveMenu("inbox");
@@ -536,10 +556,9 @@ export default function DonorDashboard(): JSX.Element {
               My Requests
             </button>
             <button
-              className={`dd-tab ${activeTab === "messages" ? "isActive" : ""}`}
+              className={`dd-tab ${isTabActive(activeTab, "messages") ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("messages");
-                setActiveMenu("impact");
               }}
             >
               Messages
@@ -552,7 +571,7 @@ export default function DonorDashboard(): JSX.Element {
             </div>
           </div>
 
-          {activeTab === "donations" && (
+          {isTabActive(activeTab, "donations") && (
             <div className="dd-subtabs">
               <button
                 className={`dd-subtab ${donationSubTab === "active" ? "isActive" : ""}`}
@@ -575,7 +594,7 @@ export default function DonorDashboard(): JSX.Element {
                 title="Loading data..."
                 text="Please wait while your dashboard data is fetched."
               />
-            ) : activeTab === "donations" ? (
+            ) : isTabActive(activeTab, "donations") ? (
               shownListings.length > 0 ? (
                 shownListings.map((item: any) => (
                   <ListingCard key={item._id} item={item} />
@@ -594,7 +613,7 @@ export default function DonorDashboard(): JSX.Element {
                   }
                 />
               )
-            ) : activeTab === "requests" ? (
+            ) : isTabActive(activeTab, "requests") ? (
               loadingRequests ? (
                 <EmptyState
                   title="Loading request notifications..."
@@ -630,14 +649,7 @@ export default function DonorDashboard(): JSX.Element {
                   text="When a receiver requests your item, details will appear here."
                 />
               )
-            ) : activeTab === "messages" ? (
-              <ChatPanel currentUser={user} apiBase={API} />
-            ) : (
-              <EmptyState
-                title="No backend data available"
-                text="This section is intentionally empty until the backend endpoint is implemented."
-              />
-            )}
+            ) : null}
           </div>
         </section>
 
@@ -764,17 +776,6 @@ export default function DonorDashboard(): JSX.Element {
             )}
           </button>
 
-          <button
-            className={`dd-navItem ${activeMenu === "impact" && activeTab === "messages" ? "isActive" : ""}`}
-            onClick={() => {
-              setActiveMenu("impact");
-              setActiveTab("messages");
-            }}
-          >
-            <span className="dd-ico">💬</span>
-            Messages
-          </button>
-
           <Link to="/profile" className="dd-navItem">
             <span className="dd-ico">👤</span>
             My Profile
@@ -806,43 +807,48 @@ export default function DonorDashboard(): JSX.Element {
           </div>
 
           <div className="dd-topRight">
-            <div className="dd-search">
-              <span className="dd-searchIco">🔎</span>
-              <input 
-                placeholder={getSearchPlaceholder()} 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button 
-                  onClick={clearSearch}
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    cursor: 'pointer',
-                    marginLeft: '5px',
-                    fontSize: '16px'
+            {/* Only show search when not on messages tab */}
+            {showSearch && (
+              <>
+                <div className="dd-search">
+                  <span className="dd-searchIco">🔎</span>
+                  <input
+                    placeholder={getSearchPlaceholder()}
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={clearSearch}
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        cursor: 'pointer',
+                        marginLeft: '5px',
+                        fontSize: '16px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <select
+                  value={searchType}
+                  onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
+                  style={{
+                    padding: '8px',
+                    borderRadius: '8px',
+                    border: '1px solid #e2e8f0',
+                    marginLeft: '10px',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
                   }}
                 >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <select 
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                marginLeft: '10px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {getSearchOptions()}
-            </select>
+                  {getSearchOptions()}
+                </select>
+              </>
+            )}
 
             <button
               className="dd-notificationBtn"
