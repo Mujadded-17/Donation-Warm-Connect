@@ -57,8 +57,15 @@ export default function ProfilePage() {
     setError("");
     setMsg("");
 
+    const token = localStorage.getItem("token") || "";
+
     try {
-      const res = await axios.get(`${API}/profile/${userId}`);
+      const res = await axios.get(`${API}/profile/${userId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
 
       if (res.data?.success) {
         const profileUser = res.data.user as User;
@@ -78,7 +85,14 @@ export default function ProfilePage() {
       }
     } catch (err: any) {
       console.error(err);
-      setError(err?.response?.data?.message || "Failed to load profile.");
+      if (err?.response?.status === 401) {
+        setError("Session expired. Please login again.");
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        setTimeout(() => nav("/login"), 1500);
+      } else {
+        setError(err?.response?.data?.message || "Failed to load profile.");
+      }
     } finally {
       setLoading(false);
     }
@@ -105,11 +119,14 @@ export default function ProfilePage() {
     setError("");
     setMsg("");
 
+    const token = localStorage.getItem("token") || "";
+
     try {
       const res = await axios.put(`${API}/profile/${user.user_id}`, form, {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
+          Authorization: `Bearer ${token}`,
         },
       });
 
@@ -119,13 +136,23 @@ export default function ProfilePage() {
 
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setMsg("Profile updated successfully.");
+        
+        // Optional: Refresh the page data after 1 second
+        setTimeout(() => {
+          fetchProfile(user.user_id);
+        }, 1000);
       } else {
         setError(res.data?.message || "Profile update failed.");
       }
     } catch (err: any) {
       console.error(err);
 
-      if (err?.response?.status === 422 && err?.response?.data?.errors) {
+      if (err?.response?.status === 401) {
+        setError("Session expired. Please login again.");
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
+        setTimeout(() => nav("/login"), 1500);
+      } else if (err?.response?.status === 422 && err?.response?.data?.errors) {
         const firstError = Object.values(err.response.data.errors)[0];
         setError(Array.isArray(firstError) ? firstError[0] : "Validation failed.");
       } else {
