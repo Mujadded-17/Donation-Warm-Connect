@@ -54,8 +54,13 @@ export default function ReceiverDashboard(): JSX.Element {
 
   const [user, setUser] = useState<User | null>(storedUser);
   const [items, setItems] = useState<Item[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("matched");
+  
+  // Search state - ONLY affects items list
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"title" | "location">("title");
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -92,13 +97,16 @@ export default function ReceiverDashboard(): JSX.Element {
 
         if (Array.isArray(itemRes.data)) {
           setItems(itemRes.data);
+          setFilteredItems(itemRes.data); // Initialize filtered items with all items
         } else {
           setItems([]);
+          setFilteredItems([]);
         }
       } catch (error) {
         console.error("Failed to fetch approved items:", error);
         setItemError("Failed to load available items.");
         setItems([]);
+        setFilteredItems([]);
       } finally {
         setLoadingItems(false);
       }
@@ -106,6 +114,27 @@ export default function ReceiverDashboard(): JSX.Element {
 
     fetchData();
   }, []);
+
+  // Search functionality - ONLY filters the items list, nothing else
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      // If search is empty, show all items
+      setFilteredItems(items);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = items.filter((item) => {
+      if (searchType === "title") {
+        // Search by item title
+        return item.title?.toLowerCase().includes(term);
+      } else {
+        // Search by pickup location
+        return item.pickup_location?.toLowerCase().includes(term);
+      }
+    });
+    setFilteredItems(filtered);
+  }, [searchTerm, searchType, items]);
 
   const displayName = user?.name || user?.email?.split("@")?.[0] || "Receiver";
 
@@ -124,9 +153,10 @@ export default function ReceiverDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
+  // Stats based on FILTERED items (changes with search)
   const stats = useMemo(() => {
-    const totalApproved = items.length;
-    const deliveryAvailable = items.filter(
+    const totalApproved = filteredItems.length;
+    const deliveryAvailable = filteredItems.filter(
       (item) =>
         String(item.delivery_available) === "1" ||
         String(item.delivery_available).toLowerCase() === "true"
@@ -139,9 +169,14 @@ export default function ReceiverDashboard(): JSX.Element {
       deliveryAvailable,
       pickupOnly,
     };
-  }, [items]);
+  }, [filteredItems]);
 
   const isLoading = loadingProfile || loadingItems;
+
+  // Clear search function
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
 
   return (
     <div className="rd">
@@ -239,8 +274,43 @@ export default function ReceiverDashboard(): JSX.Element {
           <div className="rd-topRight">
             <div className="rd-search">
               <span className="rd-searchIco">🔎</span>
-              <input placeholder="Search support..." />
+              <input 
+                placeholder="Search by title or location..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    marginLeft: '5px',
+                    fontSize: '16px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            {/* Search Type Dropdown - Only affects item filtering */}
+            <select 
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value as "title" | "location")}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                marginLeft: '10px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="title">Search by Title</option>
+              <option value="location">Search by Location</option>
+            </select>
 
             <button className="rd-iconBtn" aria-label="Notifications">
               🔔
@@ -272,6 +342,12 @@ export default function ReceiverDashboard(): JSX.Element {
             Browse real approved donations from{" "}
             <span className="rd-accent">warmConnect</span>.
           </p>
+          {/* Search result summary - Only shows when searching */}
+          {searchTerm && (
+            <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+              Found {filteredItems.length} result(s) for "{searchTerm}" in {searchType}
+            </p>
+          )}
         </section>
 
         {(profileError || itemError) && (
@@ -283,11 +359,12 @@ export default function ReceiverDashboard(): JSX.Element {
           </div>
         )}
 
+        {/* Stats Cards - Update based on filtered items */}
         <section className="rd-stats">
           <StatCard
             label="AVAILABLE ITEMS"
             value={`${stats.totalApproved}`}
-            sub="Approved items from backend"
+            sub={`Out of ${items.length} total items`}
             icon="🎁"
           />
           <StatCard
@@ -348,14 +425,14 @@ export default function ReceiverDashboard(): JSX.Element {
                 text="Please wait while your receiver dashboard is fetched."
               />
             ) : activeTab === "matched" ? (
-              items.length > 0 ? (
-                items.map((item) => (
+              filteredItems.length > 0 ? (
+                filteredItems.map((item) => (
                   <RequestCard key={item.item_id} item={item} />
                 ))
               ) : (
                 <EmptyState
-                  title="No approved items found"
-                  text="There are currently no approved items available in the backend."
+                  title={searchTerm ? "No matching items found" : "No approved items found"}
+                  text={searchTerm ? `No items match "${searchTerm}" in ${searchType}` : "There are currently no approved items available in the backend."}
                 />
               )
             ) : activeTab === "saved" ? (
