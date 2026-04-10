@@ -54,6 +54,7 @@ type DonationItem = {
   category_name?: string;
   views?: number;
   responses?: number;
+  pickup_location?: string;
 };
 
 type StatCardProps = {
@@ -64,7 +65,7 @@ type StatCardProps = {
 };
 
 type ListingCardProps = {
-  item: DonationItem;
+  item: any;
 };
 
 type EmptyStateProps = {
@@ -112,6 +113,12 @@ export default function DonorDashboard(): JSX.Element {
     null
   );
 
+  // Search state
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"title" | "location" | "receiver">("title");
+  const [filteredDonations, setFilteredDonations] = useState<any[]>([]);
+  const [filteredRequests, setFilteredRequests] = useState<IncomingRequest[]>([]);
+
   useEffect(() => {
     const fetchData = async () => {
       if (!storedUser?.user_id) {
@@ -128,6 +135,7 @@ export default function DonorDashboard(): JSX.Element {
         Authorization: `Bearer ${token}`,
       };
 
+      // Fetch profile with authentication
       try {
         setLoadingProfile(true);
         const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`, {
@@ -148,6 +156,7 @@ export default function DonorDashboard(): JSX.Element {
         setLoadingProfile(false);
       }
 
+      // Fetch donations
       try {
         setLoadingDonations(true);
         const donationRes = await axios.get(
@@ -178,6 +187,7 @@ export default function DonorDashboard(): JSX.Element {
         setLoadingDonations(false);
       }
 
+      // Fetch incoming requests
       try {
         setLoadingRequests(true);
         const requestRes = await axios.get(
@@ -188,15 +198,19 @@ export default function DonorDashboard(): JSX.Element {
         );
 
         const payload = requestRes.data?.requests;
-        setIncomingRequests(Array.isArray(payload) ? payload : []);
+        const requests = Array.isArray(payload) ? payload : [];
+        setIncomingRequests(requests);
+        setFilteredRequests(requests);
       } catch (error) {
         console.error("Incoming request fetch failed:", error);
         setRequestError("Failed to load request notifications.");
         setIncomingRequests([]);
+        setFilteredRequests([]);
       } finally {
         setLoadingRequests(false);
       }
 
+      // Fetch notifications
       try {
         setLoadingNotifications(true);
         const notificationRes = await axios.get(
@@ -255,27 +269,67 @@ export default function DonorDashboard(): JSX.Element {
         _time: formatRelativeTime(
           item.created_at || item.posted_at || item.updated_at || ""
         ),
+        _pickup_location: item.pickup_location || "Location not specified",
       };
     });
   }, [donations]);
 
+  // Search functionality for DONATIONS
+  useEffect(() => {
+    if (!searchTerm.trim() || activeTab !== "donations") {
+      setFilteredDonations(normalizedDonations);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = normalizedDonations.filter((item: any) => {
+      if (searchType === "title") {
+        return item._title?.toLowerCase().includes(term);
+      } else if (searchType === "location") {
+        return item._pickup_location?.toLowerCase().includes(term);
+      }
+      return true;
+    });
+    setFilteredDonations(filtered);
+  }, [searchTerm, searchType, normalizedDonations, activeTab]);
+
+  // Search functionality for REQUESTS
+  useEffect(() => {
+    if (!searchTerm.trim() || activeTab !== "requests") {
+      setFilteredRequests(incomingRequests);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = incomingRequests.filter((request) => {
+      if (searchType === "title") {
+        return request.item_title?.toLowerCase().includes(term);
+      } else if (searchType === "receiver") {
+        return request.receiver_name?.toLowerCase().includes(term) ||
+               request.receiver_email?.toLowerCase().includes(term);
+      }
+      return true;
+    });
+    setFilteredRequests(filtered);
+  }, [searchTerm, searchType, incomingRequests, activeTab]);
+
   const activeListings = useMemo(() => {
-    return normalizedDonations.filter(
+    return filteredDonations.filter(
       (item: any) =>
         item._status !== "completed" &&
         item._status !== "received" &&
         item._status !== "delivered"
     );
-  }, [normalizedDonations]);
+  }, [filteredDonations]);
 
   const pastListings = useMemo(() => {
-    return normalizedDonations.filter(
+    return filteredDonations.filter(
       (item: any) =>
         item._status === "completed" ||
         item._status === "received" ||
         item._status === "delivered"
     );
-  }, [normalizedDonations]);
+  }, [filteredDonations]);
 
   const shownListings =
     donationSubTab === "active" ? activeListings : pastListings;
@@ -335,11 +389,52 @@ export default function DonorDashboard(): JSX.Element {
             : request
         )
       );
+      setFilteredRequests((prev) =>
+        prev.map((request) =>
+          request.donation_id === donationId
+            ? { ...request, donation_status: status }
+            : request
+        )
+      );
     } catch (error) {
       console.error("Failed to update request decision:", error);
       alert("Failed to update request decision.");
     } finally {
       setActioningRequestId(null);
+    }
+  };
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
+
+  const getSearchPlaceholder = () => {
+    if (activeTab === "donations") {
+      return "Search your donations...";
+    } else if (activeTab === "requests") {
+      return "Search requests...";
+    } else {
+      return "Search...";
+    }
+  };
+
+  const getSearchOptions = () => {
+    if (activeTab === "donations") {
+      return (
+        <>
+          <option value="title">By Item Title</option>
+          <option value="location">By Pickup Location</option>
+        </>
+      );
+    } else if (activeTab === "requests") {
+      return (
+        <>
+          <option value="title">By Item Title</option>
+          <option value="receiver">By Receiver Name</option>
+        </>
+      );
+    } else {
+      return <option value="title">Search</option>;
     }
   };
 
@@ -455,8 +550,41 @@ export default function DonorDashboard(): JSX.Element {
           <div className="dd-topRight">
             <div className="dd-search">
               <span className="dd-searchIco">🔎</span>
-              <input placeholder="Find warmth..." />
+              <input 
+                placeholder={getSearchPlaceholder()} 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    marginLeft: '5px',
+                    fontSize: '16px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            <select 
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                marginLeft: '10px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              {getSearchOptions()}
+            </select>
 
             <button
               className="dd-notificationBtn"
@@ -500,6 +628,16 @@ export default function DonorDashboard(): JSX.Element {
             Welcome back to <span className="dd-accent">warmConnect</span>.
             Manage your real donation activity here.
           </p>
+          {searchTerm && (
+            <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+              {activeTab === "donations" && (
+                <>Showing {shownListings.length} of {normalizedDonations.length} donations matching "{searchTerm}"</>
+              )}
+              {activeTab === "requests" && (
+                <>Showing {filteredRequests.length} of {incomingRequests.length} requests matching "{searchTerm}"</>
+              )}
+            </p>
+          )}
         </section>
 
         {(profileError || donationError || requestError) && (
@@ -542,7 +680,10 @@ export default function DonorDashboard(): JSX.Element {
           <div className="dd-tabs">
             <button
               className={`dd-tab ${activeTab === "donations" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("donations")}
+              onClick={() => {
+                setActiveTab("donations");
+                setSearchTerm("");
+              }}
             >
               My Donations
             </button>
@@ -551,6 +692,7 @@ export default function DonorDashboard(): JSX.Element {
               onClick={() => {
                 setActiveTab("requests");
                 setActiveMenu("inbox");
+                setSearchTerm("");
               }}
             >
               My Requests
@@ -610,10 +752,14 @@ export default function DonorDashboard(): JSX.Element {
                 <EmptyState
                   title={
                     donationSubTab === "active"
-                      ? "No active donations found"
-                      : "No past donations found"
+                      ? searchTerm ? "No matching active donations found" : "No active donations found"
+                      : searchTerm ? "No matching past donations found" : "No past donations found"
                   }
-                  text="No real backend data is available for this section yet."
+                  text={
+                    donationSubTab === "active"
+                      ? searchTerm ? `No donations match "${searchTerm}" in ${searchType}` : "You haven't posted any active donations yet."
+                      : searchTerm ? `No past donations match "${searchTerm}" in ${searchType}` : "No completed donations yet."
+                  }
                 />
               )
             ) : activeTab === "requests" ? (
@@ -622,8 +768,8 @@ export default function DonorDashboard(): JSX.Element {
                   title="Loading request notifications..."
                   text="Please wait while incoming requests are fetched."
                 />
-              ) : incomingRequests.length > 0 ? (
-                incomingRequests.map((request) => (
+              ) : filteredRequests.length > 0 ? (
+                filteredRequests.map((request) => (
                   <RequestNotificationCard
                     key={request.donation_id}
                     request={request}
@@ -641,22 +787,11 @@ export default function DonorDashboard(): JSX.Element {
                   title="Loading notifications..."
                   text="Fetching donor notifications from server."
                 />
-              ) : notifications.length > 0 ? (
-                notifications.map((note, idx) => (
-                  <div className="dd-requestCard" key={note.notify_id || idx}>
-                    <div className="dd-requestHead">
-                      <div className="dd-requestTitle">
-                        {note.message || "New notification"}
-                      </div>
-                      <div className="dd-requestStatus is-requested">
-                        {String(note.type || "notice").toUpperCase()}
-                      </div>
-                    </div>
-                    <div className="dd-requestTime">
-                      {formatRelativeTime(note.create_time || "")}
-                    </div>
-                  </div>
-                ))
+              ) : searchTerm ? (
+                <EmptyState
+                  title="No matching requests found"
+                  text={`No requests match "${searchTerm}" in ${searchType}`}
+                />
               ) : (
                 <EmptyState
                   title="No incoming requests"
@@ -736,17 +871,12 @@ function StatCard({ label, value, sub, icon }: StatCardProps): JSX.Element {
 }
 
 function ListingCard({ item }: ListingCardProps): JSX.Element {
-  const title =
-    item.item_name || item.title || item.item_title || "Untitled Donation";
-  const desc = item.description || item.item_desc || "No description provided.";
-  const image =
-    item.image_url ||
-    item.image ||
-    "https://via.placeholder.com/600x400?text=No+Image";
-  const status = item.approval_status || item.status || "pending";
-  const time = formatRelativeTime(
-    item.created_at || item.posted_at || item.updated_at || ""
-  );
+  const title = item._title;
+  const desc = item._desc;
+  const image = item._image;
+  const status = item._status;
+  const time = item._time;
+  const location = item._pickup_location;
 
   return (
     <div className="dd-listCard">
@@ -764,6 +894,12 @@ function ListingCard({ item }: ListingCardProps): JSX.Element {
         <div className="dd-listDesc">{desc}</div>
 
         <div className="dd-listFooter">
+          {location && location !== "Location not specified" && (
+            <div className="dd-metric">
+              <span className="dd-metricIco">📍</span> {location}
+            </div>
+          )}
+
           {item.category_name && (
             <div className="dd-note">🏷️ {item.category_name}</div>
           )}
