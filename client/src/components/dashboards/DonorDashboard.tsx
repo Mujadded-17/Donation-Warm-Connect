@@ -169,8 +169,6 @@ export default function DonorDashboard(): JSX.Element {
 
         const payload = donationRes.data;
 
-        console.log("Raw donations from API:", payload); // Debug log
-
         if (Array.isArray(payload)) {
           setDonations(payload);
         } else if (Array.isArray(payload?.data)) {
@@ -253,8 +251,6 @@ export default function DonorDashboard(): JSX.Element {
   }, [displayName]);
 
   const normalizedDonations = useMemo(() => {
-    console.log("Processing donations for display:", donations);
-    
     return donations.map((item) => {
       const statusRaw = String(
         item.approval_status || item.status || "pending"
@@ -262,11 +258,6 @@ export default function DonorDashboard(): JSX.Element {
 
       // Get the date from post_date field
       const dateString = item.post_date || item.created_at || item.posted_at || item.updated_at || "";
-      
-      console.log(`Item ID: ${item.item_id}, post_date: ${item.post_date}, using: ${dateString}`); // Debug log
-      
-      const formattedTime = formatRelativeTime(dateString);
-      console.log(`Formatted time for item ${item.item_id}: ${formattedTime}`); // Debug log
 
       return {
         ...item,
@@ -279,7 +270,7 @@ export default function DonorDashboard(): JSX.Element {
           item.image ||
           "https://via.placeholder.com/600x400?text=No+Image",
         _status: statusRaw,
-        _time: formattedTime,
+        _time: formatRelativeTime(dateString),
         _pickup_location: item.pickup_location || "Location not specified",
       };
     });
@@ -499,13 +490,11 @@ export default function DonorDashboard(): JSX.Element {
             Offer a Gift
           </Link>
 
-          <button
-            className={`dd-navItem ${activeMenu === "impact" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("impact")}
-          >
+          {/* Updated My Impact - Now navigates to impact page */}
+          <Link to="/donor-impact" className="dd-navItem">
             <span className="dd-ico">♡</span>
             My Impact
-          </button>
+          </Link>
 
           <button
             className={`dd-navItem ${activeMenu === "inbox" ? "isActive" : ""}`}
@@ -1012,7 +1001,6 @@ function EmptyState({ title, text }: EmptyStateProps): JSX.Element {
   );
 }
 
-// EXACT SAME TIME FUNCTION AS RECEIVER DASHBOARD
 function formatRelativeTime(dateString: string): string {
   if (!dateString) return "Date not available";
 

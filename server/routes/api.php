@@ -24,6 +24,7 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 
 // Public story routes (anyone can view stories)
 Route::get('/stories', [StoryController::class, 'index']);
+Route::get('/stories/{storyId}/comments', [StoryController::class, 'getComments']);
 
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
@@ -37,7 +38,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::get('/user/donations/{userId}', [ItemController::class, 'getUserDonations']);
 
-    // Admin routes
+    // Donor Impact Route
+    Route::get('/donor/impact/{donorId}', [ItemController::class, 'getDonorImpact']);
+
+    // Admin routes for items
     Route::get('/admin/items/pending', [ItemController::class, 'getPendingItems']);
     Route::put('/admin/items/{id}/status', [ItemController::class, 'updateStatus']);
 
@@ -61,8 +65,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Story routes (authenticated users can create and like stories)
     Route::post('/stories', [StoryController::class, 'store']);
     Route::post('/stories/{storyId}/like', [StoryController::class, 'like']);
+    Route::post('/stories/{storyId}/comments', [StoryController::class, 'addComment']);
+    Route::get('/user/liked-stories', [StoryController::class, 'getUserLikedStories']);
     
-    // Admin story routes (optional - for approving stories)
+    // Admin story routes
     Route::get('/admin/stories/pending', [StoryController::class, 'getPendingStories']);
     Route::put('/admin/stories/{storyId}/status', [StoryController::class, 'updateStoryStatus']);
+    
+    // Admin comment routes
+    Route::get('/admin/comments/pending', [StoryController::class, 'getPendingComments']);
+    Route::put('/admin/comments/{commentId}/status', [StoryController::class, 'updateCommentStatus']);
 });
