@@ -12,6 +12,7 @@ use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+
 // Public routes
 Route::get('/items', [ItemController::class, 'index']);
 Route::get('/items/{itemId}/availability', [ItemController::class, 'checkAvailability']);

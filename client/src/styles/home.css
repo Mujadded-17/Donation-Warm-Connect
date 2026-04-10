@@ -262,21 +262,21 @@
 }
 
 .wc-h3{
-  font-size: 20px;
+  font-size: 40px;
   margin: 0;
   letter-spacing: -0.3px;
 }
 
 .wc-cats{
-  margin-top: 18px;
+  margin-top: 20px;
   background: #fff;
   border: 1px solid rgba(0,0,0,.05);
   border-radius: 18px;
   padding: 18px;
   display:grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 14px;
-  box-shadow: var(--wc-shadow-soft);
+  gap: 20px;
+ 
 }
 
 .wc-cat{
@@ -300,17 +300,11 @@
 }
 
 .wc-cat-label{
-  font-weight: 900;
-  font-size: 13px;
+  font-weight: 500;
+  font-size: 16px;
 }
 
-/* ================= Latest Shares slider ================= */
 
-.wc-arrows{
-  display:flex;
-  gap: 10px;
-  align-items:center;
-}
 
 /* Force arrows to look like small circles (prevents global button styles) */
 .wc-arrow{

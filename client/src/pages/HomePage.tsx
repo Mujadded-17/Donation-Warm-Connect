@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { getLatestItems } from "../apis/home";
 import type { LatestItem } from "../types/item";
+import { Link } from "react-router-dom";
 import "../styles/home.css";
 
 interface CanScrollState {
@@ -126,11 +127,7 @@ export default function HomePage(): JSX.Element {
             </div>
 
             <div className="wc-joined">
-              <div className="wc-avatars" aria-hidden="true">
-                <span />
-                <span />
-                <span />
-              </div>
+              
               <div className="wc-joined-text">
                 Joined by <b>2,500+</b> locals at <b>WarmConnect</b> this month
               </div>
@@ -195,16 +192,16 @@ export default function HomePage(): JSX.Element {
         <div className="wc-container wc-browse">
           <div className="wc-row-between">
             <div>
-              <h3 className="wc-h3">Browse local giving</h3>
+              <h3 className="wc-h3">Browse Local Giving!</h3>
               <p className="wc-muted">
                 Explore what's available in your community today across various
                 categories.
               </p>
             </div>
 
-            <a className="wc-link" href="#categories">
-              View all categories <span aria-hidden="true">→</span>
-            </a>
+            <Link className="wc-link" to="/explore">
+  Explore All <span aria-hidden="true">→</span>
+</Link>
           </div>
 
           <div className="wc-cats" id="categories">
@@ -217,60 +214,7 @@ export default function HomePage(): JSX.Element {
         </div>
       </section>
 
-      <section className="wc-section">
-        <div className="wc-container">
-          <div className="wc-row-between">
-            <h3 className="wc-h3">Latest Shares in WarmConnect</h3>
 
-            <div className="wc-arrows">
-              <button
-                className="wc-arrow"
-                onClick={() => scrollByCards(-1)}
-                disabled={!canScroll.left}
-                aria-label="Previous"
-                type="button"
-              >
-                ‹
-              </button>
-              <button
-                className="wc-arrow"
-                onClick={() => scrollByCards(1)}
-                disabled={!canScroll.right}
-                aria-label="Next"
-                type="button"
-              >
-                ›
-              </button>
-            </div>
-          </div>
-
-          <div className="wc-slider" ref={sliderRef}>
-            {loading && (
-              <div className="wc-state">Loading latest shares...</div>
-            )}
-
-            {!loading && error && (
-              <div className="wc-state wc-state-error">Error: {error}</div>
-            )}
-
-            {!loading && !error && latestItems.length === 0 && (
-              <div className="wc-state">
-                No shares yet. Be the first to post!
-              </div>
-            )}
-
-            {!loading &&
-              !error &&
-              latestItems.map((item) => (
-                <ListingCard
-                  key={item.item_id}
-                  item={item}
-                  onClick={() => navigate(`/item/${item.item_id}`)}
-                />
-              ))}
-          </div>
-        </div>
-      </section>
 
       <section className="wc-section">
         <div className="wc-container">

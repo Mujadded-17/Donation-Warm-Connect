@@ -18,8 +18,8 @@ export async function getLatestItems(limit = 8): Promise<LatestItem[]> {
   }
 
   const response = await axios.get<LatestItemsResponse>(
-    `${secrets.backendEndpoint}/items_list.php?limit=${limit}`
-  );
+  `${secrets.backendEndpoint}/api/items?limit=${limit}`
+);
 
   if (!response.data.success) {
     throw new Error(response.data.message || "Failed to load items");
