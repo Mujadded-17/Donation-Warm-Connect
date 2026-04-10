@@ -11,7 +11,7 @@ type User = {
   profile_url?: string | null;
 };
 
-type MenuKey = "dashboard" | "users" | "donations" | "settings";
+type MenuKey = "dashboard" | "users" | "donations" | "stories" | "settings";
 
 type Item = {
   item_id: number;
@@ -24,6 +24,19 @@ type Item = {
   donor_id?: number;
 };
 
+type Story = {
+  story_id: number;
+  user_id: number;
+  user_name: string;
+  user_email: string;
+  title: string;
+  content: string;
+  item_title?: string;
+  image_url?: string;
+  status: string;
+  created_at: string;
+};
+
 const ADMIN_EMAIL = "silviaadmin@gmail.com";
 const API = "http://127.0.0.1:8000/api";
 
@@ -33,12 +46,16 @@ export default function AdminDashboard(): JSX.Element {
 
   const [user, setUser] = useState<User | null>(storedUser);
   const [items, setItems] = useState<Item[]>([]);
+  const [pendingStories, setPendingStories] = useState<Story[]>([]);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingItems, setLoadingItems] = useState(true);
+  const [loadingStories, setLoadingStories] = useState(true);
   const [profileError, setProfileError] = useState("");
   const [itemError, setItemError] = useState("");
+  const [storyError, setStoryError] = useState("");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
+  const [updatingStoryId, setUpdatingStoryId] = useState<number | null>(null);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -84,6 +101,20 @@ export default function AdminDashboard(): JSX.Element {
       } finally {
         setLoadingItems(false);
       }
+
+      // Fetch pending stories
+      try {
+        setLoadingStories(true);
+        const storyRes = await axios.get(`${API}/admin/stories/pending`, { headers });
+        const storyPayload = storyRes.data;
+        setPendingStories(Array.isArray(storyPayload) ? storyPayload : []);
+      } catch (error) {
+        console.error("Admin stories fetch failed:", error);
+        setStoryError("Failed to load pending stories.");
+        setPendingStories([]);
+      } finally {
+        setLoadingStories(false);
+      }
     };
 
     fetchData();
@@ -120,6 +151,36 @@ export default function AdminDashboard(): JSX.Element {
     }
   };
 
+  const updateStoryStatus = async (storyId: number, status: "approved" | "rejected") => {
+    const token = localStorage.getItem("token") || "";
+
+    try {
+      setUpdatingStoryId(storyId);
+
+      await axios.put(
+        `${API}/admin/stories/${storyId}/status`,
+        { status },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      // Remove the story from pending list after action
+      setPendingStories((prev) => prev.filter((story) => story.story_id !== storyId));
+      
+      alert(`Story ${status} successfully!`);
+    } catch (error) {
+      console.error("Story status update failed:", error);
+      alert("Failed to update story status.");
+    } finally {
+      setUpdatingStoryId(null);
+    }
+  };
+
   const displayName = user?.name || "Silvia Admin";
   const displayEmail = user?.email || ADMIN_EMAIL;
 
@@ -151,14 +212,21 @@ export default function AdminDashboard(): JSX.Element {
     };
   }, [items]);
 
+  const storyStats = useMemo(() => {
+    return {
+      pending: pendingStories.length,
+    };
+  }, [pendingStories]);
+
   const recentActivities = useMemo(() => {
     return [
       `${stats.pending} items are waiting for review`,
       `${stats.approved} items are approved`,
       `${stats.rejected} items are rejected`,
       `${stats.total} total items loaded from backend`,
+      `${storyStats.pending} stories pending approval`,
     ];
-  }, [stats]);
+  }, [stats, storyStats]);
 
   const pendingItems = useMemo(() => {
     return items.filter(
@@ -166,7 +234,7 @@ export default function AdminDashboard(): JSX.Element {
     );
   }, [items]);
 
-  const isLoading = loadingProfile || loadingItems;
+  const isLoading = loadingProfile || loadingItems || loadingStories;
 
   const quickStats = [
     {
@@ -186,6 +254,12 @@ export default function AdminDashboard(): JSX.Element {
       value: `${stats.pending}`,
       sub: "Need admin action",
       icon: "🛡",
+    },
+    {
+      label: "PENDING STORIES",
+      value: `${storyStats.pending}`,
+      sub: "Awaiting moderation",
+      icon: "📖",
     },
   ];
 
@@ -245,6 +319,17 @@ export default function AdminDashboard(): JSX.Element {
           </button>
 
           <button
+            className={`ad-navItem ${activeMenu === "stories" ? "isActive" : ""}`}
+            onClick={() => setActiveMenu("stories")}
+          >
+            <span className="ad-ico">📖</span>
+            Story Moderation
+            {storyStats.pending > 0 && (
+              <span className="ad-badge">{storyStats.pending}</span>
+            )}
+          </button>
+
+          <button
             className={`ad-navItem ${activeMenu === "settings" ? "isActive" : ""}`}
             onClick={() => setActiveMenu("settings")}
           >
@@ -265,7 +350,7 @@ export default function AdminDashboard(): JSX.Element {
             <h1>
               Welcome back, <span>{displayName}</span>
             </h1>
-            <p>Monitor users, donations, and platform activity from one place.</p>
+            <p>Monitor users, donations, stories, and platform activity from one place.</p>
           </div>
 
           <div className="ad-topRight">
@@ -278,83 +363,177 @@ export default function AdminDashboard(): JSX.Element {
           </div>
         </header>
 
-        <section className="ad-stats">
-          {quickStats.map((item) => (
-            <article className="ad-statCard" key={item.label}>
-              <div className="ad-statTop">
-                <span className="ad-statLabel">{item.label}</span>
-                <span className="ad-statIcon">{item.icon}</span>
-              </div>
-              <div className="ad-statValue">{item.value}</div>
-              <div className="ad-statSub">{item.sub}</div>
-            </article>
-          ))}
-        </section>
+        {/* Dashboard View */}
+        {activeMenu === "dashboard" && (
+          <>
+            <section className="ad-stats">
+              {quickStats.map((item) => (
+                <article className="ad-statCard" key={item.label}>
+                  <div className="ad-statTop">
+                    <span className="ad-statLabel">{item.label}</span>
+                    <span className="ad-statIcon">{item.icon}</span>
+                  </div>
+                  <div className="ad-statValue">{item.value}</div>
+                  <div className="ad-statSub">{item.sub}</div>
+                </article>
+              ))}
+            </section>
 
-        {(profileError || itemError) && (
-          <div className="ad-empty" style={{ marginTop: "14px" }}>
-            {[profileError, itemError].filter(Boolean).join(" ")}
-          </div>
+            {(profileError || itemError || storyError) && (
+              <div className="ad-empty" style={{ marginTop: "14px" }}>
+                {[profileError, itemError, storyError].filter(Boolean).join(" ")}
+              </div>
+            )}
+
+            <section className="ad-grid">
+              <article className="ad-panel">
+                <h2>Recent Activity</h2>
+                {isLoading ? (
+                  <div className="ad-loading">Loading activity...</div>
+                ) : (
+                  <ul className="ad-list">
+                    {recentActivities.map((activity) => (
+                      <li key={activity}>{activity}</li>
+                    ))}
+                  </ul>
+                )}
+              </article>
+
+              <article className="ad-panel">
+                <h2>Pending Donations</h2>
+                {isLoading && <div className="ad-loading">Loading donations...</div>}
+
+                {!isLoading && pendingItems.length === 0 && (
+                  <div className="ad-empty">No pending donations right now.</div>
+                )}
+
+                {!isLoading && pendingItems.length > 0 && (
+                  <div className="ad-itemList">
+                    {pendingItems.slice(0, 6).map((item) => (
+                      <div className="ad-itemRow" key={item.item_id}>
+                        <div className="ad-itemMain">
+                          <div className="ad-itemTitle">{item.title || "Untitled item"}</div>
+                          <div className="ad-itemMeta">
+                            ID #{item.item_id} • {formatDate(item.post_date)}
+                          </div>
+                        </div>
+
+                        <div className="ad-itemActions">
+                          <button
+                            type="button"
+                            className="ad-approveBtn"
+                            disabled={updatingId === item.item_id}
+                            onClick={() => updateItemStatus(item.item_id, "approved")}
+                          >
+                            {updatingId === item.item_id ? "Updating..." : "Approve"}
+                          </button>
+
+                          <button
+                            type="button"
+                            className="ad-rejectBtn"
+                            disabled={updatingId === item.item_id}
+                            onClick={() => updateItemStatus(item.item_id, "rejected")}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
+            </section>
+          </>
         )}
 
-        <section className="ad-grid">
-          <article className="ad-panel">
-            <h2>Recent Activity</h2>
-            {isLoading ? (
-              <div className="ad-loading">Loading activity...</div>
+        {/* Story Moderation View */}
+        {activeMenu === "stories" && (
+          <section className="ad-story-section">
+            <div className="ad-story-header">
+              <h2>📖 Story Moderation</h2>
+              <p>Review and approve community stories before they go live on the platform</p>
+            </div>
+
+            {loadingStories ? (
+              <div className="ad-loading">Loading pending stories...</div>
+            ) : storyError ? (
+              <div className="ad-empty">{storyError}</div>
+            ) : pendingStories.length === 0 ? (
+              <div className="ad-empty-state">
+                <div className="ad-empty-icon">📖✨</div>
+                <div className="ad-empty-title">No Pending Stories</div>
+                <div className="ad-empty-text">All stories have been reviewed. Great job keeping the community safe!</div>
+              </div>
             ) : (
-              <ul className="ad-list">
-                {recentActivities.map((activity) => (
-                  <li key={activity}>{activity}</li>
-                ))}
-              </ul>
-            )}
-          </article>
-
-          <article className="ad-panel">
-            <h2>Pending Donations</h2>
-            {isLoading && <div className="ad-loading">Loading donations...</div>}
-
-            {!isLoading && pendingItems.length === 0 && (
-              <div className="ad-empty">No pending donations right now.</div>
-            )}
-
-            {!isLoading && pendingItems.length > 0 && (
-              <div className="ad-itemList">
-                {pendingItems.slice(0, 6).map((item) => (
-                  <div className="ad-itemRow" key={item.item_id}>
-                    <div className="ad-itemMain">
-                      <div className="ad-itemTitle">{item.title || "Untitled item"}</div>
-                      <div className="ad-itemMeta">
-                        ID #{item.item_id} • {formatDate(item.post_date)}
+              <div className="ad-stories-list">
+                {pendingStories.map((story) => (
+                  <div key={story.story_id} className="ad-story-card">
+                    <div className="ad-story-header">
+                      <div className="ad-story-info">
+                        <h3>{story.title}</h3>
+                        <div className="ad-story-meta">
+                          <span>👤 {story.user_name}</span>
+                          <span>📧 {story.user_email}</span>
+                          <span>📅 {formatDate(story.created_at)}</span>
+                        </div>
                       </div>
+                      <div className="ad-story-badge pending">Pending Review</div>
                     </div>
-
-                    <div className="ad-itemActions">
+                    
+                    {story.item_title && (
+                      <div className="ad-story-item">
+                        🎁 Item: {story.item_title}
+                      </div>
+                    )}
+                    
+                    <div className="ad-story-content">
+                      <strong>Story:</strong>
+                      <p>{story.content}</p>
+                    </div>
+                    
+                    {story.image_url && (
+                      <div className="ad-story-image">
+                        <img src={story.image_url} alt={story.title} />
+                      </div>
+                    )}
+                    
+                    <div className="ad-story-actions">
                       <button
-                        type="button"
-                        className="ad-approveBtn"
-                        disabled={updatingId === item.item_id}
-                        onClick={() => updateItemStatus(item.item_id, "approved")}
+                        className="ad-approve-btn"
+                        onClick={() => updateStoryStatus(story.story_id, "approved")}
+                        disabled={updatingStoryId === story.story_id}
                       >
-                        {updatingId === item.item_id ? "Updating..." : "Approve"}
+                        {updatingStoryId === story.story_id ? "Processing..." : "✓ Approve"}
                       </button>
-
                       <button
-                        type="button"
-                        className="ad-rejectBtn"
-                        disabled={updatingId === item.item_id}
-                        onClick={() => updateItemStatus(item.item_id, "rejected")}
+                        className="ad-reject-btn"
+                        onClick={() => updateStoryStatus(story.story_id, "rejected")}
+                        disabled={updatingStoryId === story.story_id}
                       >
-                        Reject
+                        {updatingStoryId === story.story_id ? "Processing..." : "✗ Reject"}
                       </button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </article>
-        </section>
+          </section>
+        )}
+
+        {/* Placeholder for other sections */}
+        {activeMenu === "users" && (
+          <section className="ad-panel">
+            <h2>User Management</h2>
+            <p>User management features coming soon...</p>
+          </section>
+        )}
+
+        {activeMenu === "settings" && (
+          <section className="ad-panel">
+            <h2>Platform Settings</h2>
+            <p>Platform settings coming soon...</p>
+          </section>
+        )}
       </main>
     </div>
   );
