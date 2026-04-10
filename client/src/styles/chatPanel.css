@@ -1,0 +1,183 @@
+.cp-shell {
+  grid-column: 1 / -1;
+  border: 1px solid #ececee;
+  border-radius: 14px;
+  background: #fff;
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: 520px;
+  overflow: hidden;
+}
+
+.cp-list {
+  border-right: 1px solid #ececee;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #fcfcfd;
+}
+
+.cp-listHead {
+  font-weight: 900;
+  font-size: 14px;
+  padding: 6px 4px;
+}
+
+.cp-userBtn {
+  border: 1px solid #ececee;
+  background: #fff;
+  border-radius: 12px;
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.cp-userBtn.isActive {
+  border-color: #ff6b2d;
+  background: rgba(255, 107, 45, 0.08);
+}
+
+.cp-userName {
+  font-weight: 800;
+  color: #1b1b1b;
+  font-size: 13px;
+}
+
+.cp-userLast {
+  margin-top: 3px;
+  color: #666;
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cp-userTime {
+  margin-top: 4px;
+  font-size: 11px;
+  color: #999;
+  font-weight: 700;
+}
+
+.cp-chat {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  min-height: 520px;
+  position: relative;
+}
+
+.cp-chatHead {
+  border-bottom: 1px solid #ececee;
+  padding: 12px 14px;
+}
+
+.cp-chatTitle {
+  font-weight: 900;
+  font-size: 15px;
+}
+
+.cp-chatSub {
+  margin-top: 3px;
+  font-size: 12px;
+  color: #888;
+}
+
+.cp-messages {
+  padding: 12px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: #f7f8fa;
+}
+
+.cp-bubble {
+  max-width: 75%;
+  border-radius: 12px;
+  padding: 8px 10px;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
+}
+
+.cp-bubble.isOwn {
+  align-self: flex-end;
+  background: #ff6b2d;
+  color: #fff;
+}
+
+.cp-bubble.isOther {
+  align-self: flex-start;
+  background: #fff;
+  color: #242424;
+  border: 1px solid #ececee;
+}
+
+.cp-bubbleTime {
+  margin-top: 4px;
+  font-size: 11px;
+  opacity: 0.75;
+  font-weight: 700;
+}
+
+.cp-composer {
+  border-top: 1px solid #ececee;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+  background: #fff;
+}
+
+.cp-composer input {
+  flex: 1;
+  border: 1px solid #e3e5e8;
+  border-radius: 10px;
+  padding: 10px 12px;
+  font-size: 14px;
+  outline: none;
+}
+
+.cp-composer button {
+  border: 0;
+  border-radius: 10px;
+  background: #ff6b2d;
+  color: #fff;
+  font-weight: 800;
+  padding: 0 16px;
+  cursor: pointer;
+}
+
+.cp-composer button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.cp-muted,
+.cp-empty,
+.cp-error {
+  padding: 12px;
+  font-size: 13px;
+}
+
+.cp-muted,
+.cp-empty {
+  color: #777;
+}
+
+.cp-error {
+  color: #b23131;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .cp-shell {
+    grid-template-columns: 1fr;
+    min-height: 680px;
+  }
+
+  .cp-list {
+    border-right: 0;
+    border-bottom: 1px solid #ececee;
+    max-height: 240px;
+    overflow-y: auto;
+  }
+}

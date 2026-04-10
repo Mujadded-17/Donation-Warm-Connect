@@ -1,5 +1,6 @@
 import DonorDashboard from "../components/dashboards/DonorDashboard";
 import ReceiverDashboard from "../components/dashboards/ReceiverDashboard";
+import AdminDashboard from "../components/dashboards/AdminDashboard";
 
 type User = {
   name?: string;
@@ -15,6 +16,11 @@ export default function Dashboard() {
   }
 
   const role = String(user.user_type || "").trim().toLowerCase();
+  const email = String(user.email || "").trim().toLowerCase();
+
+  if (role === "admin" || email === "silviaadmin@gmail.com") {
+    return <AdminDashboard />;
+  }
 
   if (role === "donor") {
     return <DonorDashboard />;

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "../../styles/receiverDashboard.css";
 import { Link } from "react-router-dom";
+import ChatPanel from "../chat/ChatPanel";
 
 const API = "http://127.0.0.1:8000/api";
 
@@ -16,7 +17,7 @@ type User = {
 };
 
 type MenuKey = "dashboard" | "browse" | "requests" | "messages";
-type TabKey = "matched" | "saved" | "community";
+type TabKey = "matched" | "saved" | "community" | "messages";
 
 type Item = {
   item_id?: number;
@@ -198,7 +199,10 @@ export default function ReceiverDashboard(): JSX.Element {
 
           <button
             className={`rd-navItem ${activeMenu === "messages" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("messages")}
+            onClick={() => {
+              setActiveMenu("messages");
+              setActiveTab("messages");
+            }}
           >
             <span className="rd-ico">✉</span>
             Messages
@@ -320,6 +324,15 @@ export default function ReceiverDashboard(): JSX.Element {
             >
               Community
             </button>
+            <button
+              className={`rd-tab ${activeTab === "messages" ? "isActive" : ""}`}
+              onClick={() => {
+                setActiveTab("messages");
+                setActiveMenu("messages");
+              }}
+            >
+              Messages
+            </button>
 
             <div className="rd-tabsRight">
               <button className="rd-sortBtn">
@@ -350,6 +363,8 @@ export default function ReceiverDashboard(): JSX.Element {
                 title="No saved items endpoint available"
                 text="This section remains empty until a real saved items backend feature is added."
               />
+            ) : activeTab === "messages" ? (
+              <ChatPanel currentUser={user} apiBase={API} />
             ) : (
               <EmptyState
                 title="No community endpoint available"

@@ -9,10 +9,18 @@ class ItemController extends Controller
 {
     public function index()
     {
-        // Only show approved items on explore page
+        // Only show approved items that don't have an approved donation request
         $items = DB::table('item')
             ->where('status', 'approved')
+            ->whereNotExists(function ($query) {
+                $query->select(DB::raw(1))
+                    ->from('donation')
+                    ->whereColumn('donation.item_id', 'item.item_id')
+                    ->where('donation.status', 'approved');
+            })
+            ->orderBy('post_date', 'desc')
             ->get();
+        
         return response()->json($items);
     }
 
@@ -27,6 +35,7 @@ class ItemController extends Controller
             'pickup_location' => $request->pickup_location,
             'donor_id' => $request->donor_id,
             'category_id' => $request->category_id,
+            'post_date' => now(),
         ]);
 
         return response()->json([
@@ -94,6 +103,32 @@ class ItemController extends Controller
         return response()->json([
             'message' => 'Status updated successfully',
             'status' => $request->status
+        ]);
+    }
+
+    // Check if an item is available for request
+    public function checkAvailability($itemId)
+    {
+        $item = DB::table('item')
+            ->where('item_id', $itemId)
+            ->where('status', 'approved')
+            ->first();
+        
+        if (!$item) {
+            return response()->json([
+                'available' => false,
+                'message' => 'Item not found or not approved'
+            ], 404);
+        }
+        
+        $hasApprovedRequest = DB::table('donation')
+            ->where('item_id', $itemId)
+            ->where('status', 'approved')
+            ->exists();
+        
+        return response()->json([
+            'available' => !$hasApprovedRequest,
+            'item' => $item
         ]);
     }
 }
