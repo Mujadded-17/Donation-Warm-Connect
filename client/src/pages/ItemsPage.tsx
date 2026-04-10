@@ -43,10 +43,8 @@ function ItemsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [requestingId, setRequestingId] = useState<number | null>(null);
-
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
-
 
   useEffect(() => {
     const loadData = async () => {
@@ -56,21 +54,10 @@ function ItemsPage() {
 
         const [itemsRes, categoriesRes] = await Promise.all([
           fetch(`${API}/items`, {
-
             headers: { Accept: "application/json" },
           }),
           fetch(`${API}/categories`, {
             headers: { Accept: "application/json" },
-
-            headers: {
-              Accept: "application/json",
-            },
-          }),
-          fetch(`${API}/categories`, {
-            headers: {
-              Accept: "application/json",
-            },
-
           }),
         ]);
 
@@ -253,81 +240,6 @@ function ItemsPage() {
     return "▦";
   };
 
-  const handleRequestItem = async (item: Item) => {
-    const rawUser = localStorage.getItem("user");
-    const token = localStorage.getItem("token") || "";
-
-    if (!rawUser) {
-      navigate("/login");
-      return;
-    }
-
-    let user: User | null = null;
-
-    try {
-      user = JSON.parse(rawUser) as User;
-    } catch {
-      navigate("/login");
-      return;
-    }
-
-    if (!user?.user_id) {
-      alert("Please login again.");
-      navigate("/login");
-      return;
-    }
-
-    if (!token) {
-      alert("Authentication token not found. Please login again.");
-      navigate("/login");
-      return;
-    }
-
-    if ((user.user_type || "").toLowerCase() !== "receiver") {
-      alert("Only receivers can request items.");
-      return;
-    }
-
-    if (user.user_id === item.donor_id) {
-      alert("You cannot request your own item.");
-      return;
-    }
-
-    try {
-      setRequestingId(item.item_id);
-
-      const response = await fetch(`${API}/donations/request`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          item_id: item.item_id,
-          receiver_id: user.user_id,
-        }),
-      });
-
-      const data = (await response.json()) as {
-        success?: boolean;
-        message?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(data?.message || "Failed to request item");
-      }
-
-      alert(data?.message || "Request sent successfully.");
-    } catch (err: unknown) {
-      const message =
-        err instanceof Error ? err.message : "Failed to request item";
-      alert(message);
-    } finally {
-      setRequestingId(null);
-    }
-  };
-
   return (
     <div className="explore-page">
       <div className="explore-shell">
@@ -351,49 +263,6 @@ function ItemsPage() {
                   {normalizedItems.length}
                 </span>
               </button>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="en-list-section">
-        <h2 className="en-subtitle">
-          {activeCategory === "all"
-            ? "All Categories"
-            : `${categoryNameMap.get(activeCategory) || "Category"} Items`}
-        </h2>
-
-        {loading && <div className="en-state">Loading items...</div>}
-
-        {!loading && error && (
-          <div className="en-state en-state-error">Error: {error}</div>
-        )}
-
-        {!loading && !error && visibleItems.length === 0 && (
-          <div className="en-state">No items found in this category.</div>
-        )}
-
-        {!loading && !error && visibleItems.length > 0 && (
-          <div className="en-grid">
-            {visibleItems.map((item) => (
-              <article key={item.item_id} className="en-card">
-                <div className="en-card-image-wrap">
-                  {item.images ? (
-                    <img
-                      src={item.images}
-                      alt={item.title}
-                      className="en-card-image"
-                    />
-                  ) : (
-                    <div className="en-card-placeholder">No Image</div>
-                  )}
-                </div>
-
-                <div className="en-card-content">
-                  <h3 className="en-card-title">{item.title}</h3>
-                  <p className="en-card-meta">{item.categoryName}</p>
-                  <p className="en-card-owner">By: Community Donor</p>
-                  <p className="en-card-location">📍 {item.pickup_location}</p>
 
               {categories.map((category) => {
                 const count = countsByCategory.get(category.category_id) || 0;
@@ -414,11 +283,6 @@ function ItemsPage() {
                       <span>{category.name}</span>
                     </span>
                     <span className="category-count-pill">{count}</span>
-                    className="en-card-btn"
-                    onClick={() => handleRequestItem(item)}
-                    disabled={requestingId === item.item_id}
-                  >
-                    {requestingId === item.item_id ? "Requesting..." : "Request Item"}
                   </button>
                 );
               })}
