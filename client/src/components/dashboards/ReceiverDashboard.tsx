@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import "../../styles/receiverDashboard.css";
 import { Link } from "react-router-dom";
+import ChatPanel from "../chat/ChatPanel";
 
 const API = "http://127.0.0.1:8000/api";
 
@@ -16,7 +17,7 @@ type User = {
 };
 
 type MenuKey = "dashboard" | "browse" | "requests" | "messages";
-type TabKey = "matched" | "saved" | "community";
+type TabKey = "matched" | "saved" | "community" | "messages";
 
 type Item = {
   item_id?: number;
@@ -53,8 +54,13 @@ export default function ReceiverDashboard(): JSX.Element {
 
   const [user, setUser] = useState<User | null>(storedUser);
   const [items, setItems] = useState<Item[]>([]);
+  const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("matched");
+  
+  // Search state - ONLY affects items list
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchType, setSearchType] = useState<"title" | "location">("title");
 
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [loadingItems, setLoadingItems] = useState(true);
@@ -66,8 +72,15 @@ export default function ReceiverDashboard(): JSX.Element {
       if (storedUser?.user_id) {
         try {
           setLoadingProfile(true);
-          const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`);
-
+          const token = localStorage.getItem("token") || "";
+          
+          const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+          
           if (profileRes.data?.success) {
             const profileUser = profileRes.data.user as User;
             setUser(profileUser);
@@ -91,13 +104,16 @@ export default function ReceiverDashboard(): JSX.Element {
 
         if (Array.isArray(itemRes.data)) {
           setItems(itemRes.data);
+          setFilteredItems(itemRes.data);
         } else {
           setItems([]);
+          setFilteredItems([]);
         }
       } catch (error) {
         console.error("Failed to fetch approved items:", error);
         setItemError("Failed to load available items.");
         setItems([]);
+        setFilteredItems([]);
       } finally {
         setLoadingItems(false);
       }
@@ -105,6 +121,24 @@ export default function ReceiverDashboard(): JSX.Element {
 
     fetchData();
   }, []);
+
+  // Search functionality - ONLY filters the items list, nothing else
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredItems(items);
+      return;
+    }
+
+    const term = searchTerm.toLowerCase().trim();
+    const filtered = items.filter((item) => {
+      if (searchType === "title") {
+        return item.title?.toLowerCase().includes(term);
+      } else {
+        return item.pickup_location?.toLowerCase().includes(term);
+      }
+    });
+    setFilteredItems(filtered);
+  }, [searchTerm, searchType, items]);
 
   const displayName = user?.name || user?.email?.split("@")?.[0] || "Receiver";
 
@@ -123,7 +157,8 @@ export default function ReceiverDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
-  const stats = useMemo(() => {
+  // Stats based on ALL items (original data) - NOT affected by search
+  const allItemsStats = useMemo(() => {
     const totalApproved = items.length;
     const deliveryAvailable = items.filter(
       (item) =>
@@ -141,6 +176,10 @@ export default function ReceiverDashboard(): JSX.Element {
   }, [items]);
 
   const isLoading = loadingProfile || loadingItems;
+
+  const clearSearch = () => {
+    setSearchTerm("");
+  };
 
   return (
     <div className="rd">
@@ -198,7 +237,10 @@ export default function ReceiverDashboard(): JSX.Element {
 
           <button
             className={`rd-navItem ${activeMenu === "messages" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("messages")}
+            onClick={() => {
+              setActiveMenu("messages");
+              setActiveTab("messages");
+            }}
           >
             <span className="rd-ico">✉</span>
             Messages
@@ -223,20 +265,55 @@ export default function ReceiverDashboard(): JSX.Element {
       <main className="rd-main">
         <header className="rd-topbar">
           <div className="rd-topLinks">
-            <Link to="/" className="rd-topLink">
-              Home
-            </Link>
-            <Link to="/explore" className="rd-topLink">
-              Explore
-            </Link>
-            <span className="rd-topLink">Stories</span>
-          </div>
-
+  <Link to="/" className="rd-topLink">
+    Home
+  </Link>
+  <Link to="/explore" className="rd-topLink">
+    Explore
+  </Link>
+  <Link to="/stories" className="rd-topLink">
+    Stories
+  </Link>
+</div>
           <div className="rd-topRight">
             <div className="rd-search">
               <span className="rd-searchIco">🔎</span>
-              <input placeholder="Search support..." />
+              <input 
+                placeholder="Search by title or location..." 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    marginLeft: '5px',
+                    fontSize: '16px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            <select 
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value as "title" | "location")}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                marginLeft: '10px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              <option value="title">Search by Title</option>
+              <option value="location">Search by Location</option>
+            </select>
 
             <button className="rd-iconBtn" aria-label="Notifications">
               🔔
@@ -268,6 +345,11 @@ export default function ReceiverDashboard(): JSX.Element {
             Browse real approved donations from{" "}
             <span className="rd-accent">warmConnect</span>.
           </p>
+          {searchTerm && (
+            <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+              Showing {filteredItems.length} of {items.length} total items matching "{searchTerm}" in {searchType}
+            </p>
+          )}
         </section>
 
         {(profileError || itemError) && (
@@ -282,19 +364,19 @@ export default function ReceiverDashboard(): JSX.Element {
         <section className="rd-stats">
           <StatCard
             label="AVAILABLE ITEMS"
-            value={`${stats.totalApproved}`}
-            sub="Approved items from backend"
+            value={`${allItemsStats.totalApproved}`}
+            sub="Total items in community"
             icon="🎁"
           />
           <StatCard
             label="DELIVERY AVAILABLE"
-            value={`${stats.deliveryAvailable}`}
+            value={`${allItemsStats.deliveryAvailable}`}
             sub="Items offering delivery"
             icon="🚚"
           />
           <StatCard
             label="PICKUP ITEMS"
-            value={`${stats.pickupOnly}`}
+            value={`${allItemsStats.pickupOnly}`}
             sub="Items requiring pickup"
             icon="📍"
           />
@@ -320,6 +402,15 @@ export default function ReceiverDashboard(): JSX.Element {
             >
               Community
             </button>
+            <button
+              className={`rd-tab ${activeTab === "messages" ? "isActive" : ""}`}
+              onClick={() => {
+                setActiveTab("messages");
+                setActiveMenu("messages");
+              }}
+            >
+              Messages
+            </button>
 
             <div className="rd-tabsRight">
               <button className="rd-sortBtn">
@@ -335,14 +426,14 @@ export default function ReceiverDashboard(): JSX.Element {
                 text="Please wait while your receiver dashboard is fetched."
               />
             ) : activeTab === "matched" ? (
-              items.length > 0 ? (
-                items.map((item) => (
+              filteredItems.length > 0 ? (
+                filteredItems.map((item) => (
                   <RequestCard key={item.item_id} item={item} />
                 ))
               ) : (
                 <EmptyState
-                  title="No approved items found"
-                  text="There are currently no approved items available in the backend."
+                  title={searchTerm ? "No matching items found" : "No approved items found"}
+                  text={searchTerm ? `No items match "${searchTerm}" in ${searchType}. Try a different search term.` : "There are currently no approved items available in the backend."}
                 />
               )
             ) : activeTab === "saved" ? (
@@ -350,6 +441,8 @@ export default function ReceiverDashboard(): JSX.Element {
                 title="No saved items endpoint available"
                 text="This section remains empty until a real saved items backend feature is added."
               />
+            ) : activeTab === "messages" ? (
+              <ChatPanel currentUser={user} apiBase={API} />
             ) : (
               <EmptyState
                 title="No community endpoint available"
@@ -375,7 +468,7 @@ export default function ReceiverDashboard(): JSX.Element {
 
             <div className="rd-mapMock">
               <div className="rd-mapPill">
-                {user?.name || "No name"} | Available items: {stats.totalApproved}
+                {user?.name || "No name"} | Total available: {allItemsStats.totalApproved} items
               </div>
             </div>
           </div>
