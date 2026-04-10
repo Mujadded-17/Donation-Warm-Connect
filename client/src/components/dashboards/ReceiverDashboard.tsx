@@ -265,15 +265,16 @@ export default function ReceiverDashboard(): JSX.Element {
       <main className="rd-main">
         <header className="rd-topbar">
           <div className="rd-topLinks">
-            <Link to="/" className="rd-topLink">
-              Home
-            </Link>
-            <Link to="/explore" className="rd-topLink">
-              Explore
-            </Link>
-            <span className="rd-topLink">Stories</span>
-          </div>
-
+  <Link to="/" className="rd-topLink">
+    Home
+  </Link>
+  <Link to="/explore" className="rd-topLink">
+    Explore
+  </Link>
+  <Link to="/stories" className="rd-topLink">
+    Stories
+  </Link>
+</div>
           <div className="rd-topRight">
             <div className="rd-search">
               <span className="rd-searchIco">🔎</span>
