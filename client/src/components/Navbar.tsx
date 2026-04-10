@@ -52,8 +52,7 @@ export default function Navbar(): JSX.Element {
 
         <nav className="wc-nav-links" aria-label="Primary">
           <Link to="/explore">Explore</Link>
-          <a href="#how">How it Works</a>
-          <a href="#stories">Stories</a>
+          
           {user && (
             <Link to="/my-donations" className="wc-active-link">
               My Donations
