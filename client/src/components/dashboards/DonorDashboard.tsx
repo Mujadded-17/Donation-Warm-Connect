@@ -537,15 +537,17 @@ export default function DonorDashboard(): JSX.Element {
 
       <main className="dd-main">
         <header className="dd-topbar">
-          <div className="dd-topLinks">
-            <Link to="/" className="dd-topLink">
-              Home
-            </Link>
-            <Link to="/explore" className="dd-topLink">
-              Explore
-            </Link>
-            <span className="dd-topLink">Stories</span>
-          </div>
+          <div className="rd-topLinks">
+  <Link to="/" className="rd-topLink">
+    Home
+  </Link>
+  <Link to="/explore" className="rd-topLink">
+    Explore
+  </Link>
+  <Link to="/stories" className="rd-topLink">
+    Stories
+  </Link>
+</div>
 
           <div className="dd-topRight">
             <div className="dd-search">
