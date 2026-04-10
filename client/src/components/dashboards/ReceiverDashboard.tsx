@@ -72,8 +72,15 @@ export default function ReceiverDashboard(): JSX.Element {
       if (storedUser?.user_id) {
         try {
           setLoadingProfile(true);
-          const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`);
-
+          const token = localStorage.getItem("token") || "";
+          
+          const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json",
+            },
+          });
+          
           if (profileRes.data?.success) {
             const profileUser = profileRes.data.user as User;
             setUser(profileUser);
@@ -97,7 +104,7 @@ export default function ReceiverDashboard(): JSX.Element {
 
         if (Array.isArray(itemRes.data)) {
           setItems(itemRes.data);
-          setFilteredItems(itemRes.data); // Initialize filtered items with all items
+          setFilteredItems(itemRes.data);
         } else {
           setItems([]);
           setFilteredItems([]);
@@ -118,7 +125,6 @@ export default function ReceiverDashboard(): JSX.Element {
   // Search functionality - ONLY filters the items list, nothing else
   useEffect(() => {
     if (!searchTerm.trim()) {
-      // If search is empty, show all items
       setFilteredItems(items);
       return;
     }
@@ -126,10 +132,8 @@ export default function ReceiverDashboard(): JSX.Element {
     const term = searchTerm.toLowerCase().trim();
     const filtered = items.filter((item) => {
       if (searchType === "title") {
-        // Search by item title
         return item.title?.toLowerCase().includes(term);
       } else {
-        // Search by pickup location
         return item.pickup_location?.toLowerCase().includes(term);
       }
     });
@@ -153,10 +157,10 @@ export default function ReceiverDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
-  // Stats based on FILTERED items (changes with search)
-  const stats = useMemo(() => {
-    const totalApproved = filteredItems.length;
-    const deliveryAvailable = filteredItems.filter(
+  // Stats based on ALL items (original data) - NOT affected by search
+  const allItemsStats = useMemo(() => {
+    const totalApproved = items.length;
+    const deliveryAvailable = items.filter(
       (item) =>
         String(item.delivery_available) === "1" ||
         String(item.delivery_available).toLowerCase() === "true"
@@ -169,11 +173,10 @@ export default function ReceiverDashboard(): JSX.Element {
       deliveryAvailable,
       pickupOnly,
     };
-  }, [filteredItems]);
+  }, [items]);
 
   const isLoading = loadingProfile || loadingItems;
 
-  // Clear search function
   const clearSearch = () => {
     setSearchTerm("");
   };
@@ -295,7 +298,6 @@ export default function ReceiverDashboard(): JSX.Element {
               )}
             </div>
 
-            {/* Search Type Dropdown - Only affects item filtering */}
             <select 
               value={searchType}
               onChange={(e) => setSearchType(e.target.value as "title" | "location")}
@@ -342,10 +344,9 @@ export default function ReceiverDashboard(): JSX.Element {
             Browse real approved donations from{" "}
             <span className="rd-accent">warmConnect</span>.
           </p>
-          {/* Search result summary - Only shows when searching */}
           {searchTerm && (
             <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
-              Found {filteredItems.length} result(s) for "{searchTerm}" in {searchType}
+              Showing {filteredItems.length} of {items.length} total items matching "{searchTerm}" in {searchType}
             </p>
           )}
         </section>
@@ -359,23 +360,22 @@ export default function ReceiverDashboard(): JSX.Element {
           </div>
         )}
 
-        {/* Stats Cards - Update based on filtered items */}
         <section className="rd-stats">
           <StatCard
             label="AVAILABLE ITEMS"
-            value={`${stats.totalApproved}`}
-            sub={`Out of ${items.length} total items`}
+            value={`${allItemsStats.totalApproved}`}
+            sub="Total items in community"
             icon="🎁"
           />
           <StatCard
             label="DELIVERY AVAILABLE"
-            value={`${stats.deliveryAvailable}`}
+            value={`${allItemsStats.deliveryAvailable}`}
             sub="Items offering delivery"
             icon="🚚"
           />
           <StatCard
             label="PICKUP ITEMS"
-            value={`${stats.pickupOnly}`}
+            value={`${allItemsStats.pickupOnly}`}
             sub="Items requiring pickup"
             icon="📍"
           />
@@ -432,7 +432,7 @@ export default function ReceiverDashboard(): JSX.Element {
               ) : (
                 <EmptyState
                   title={searchTerm ? "No matching items found" : "No approved items found"}
-                  text={searchTerm ? `No items match "${searchTerm}" in ${searchType}` : "There are currently no approved items available in the backend."}
+                  text={searchTerm ? `No items match "${searchTerm}" in ${searchType}. Try a different search term.` : "There are currently no approved items available in the backend."}
                 />
               )
             ) : activeTab === "saved" ? (
@@ -467,7 +467,7 @@ export default function ReceiverDashboard(): JSX.Element {
 
             <div className="rd-mapMock">
               <div className="rd-mapPill">
-                {user?.name || "No name"} | Available items: {stats.totalApproved}
+                {user?.name || "No name"} | Total available: {allItemsStats.totalApproved} items
               </div>
             </div>
           </div>

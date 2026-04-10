@@ -135,6 +135,7 @@ export default function DonorDashboard(): JSX.Element {
         Authorization: `Bearer ${token}`,
       };
 
+      // Fetch profile with authentication
       try {
         setLoadingProfile(true);
         const profileRes = await axios.get(`${API}/profile/${storedUser.user_id}`, {
@@ -155,6 +156,7 @@ export default function DonorDashboard(): JSX.Element {
         setLoadingProfile(false);
       }
 
+      // Fetch donations
       try {
         setLoadingDonations(true);
         const donationRes = await axios.get(
@@ -185,6 +187,7 @@ export default function DonorDashboard(): JSX.Element {
         setLoadingDonations(false);
       }
 
+      // Fetch incoming requests
       try {
         setLoadingRequests(true);
         const requestRes = await axios.get(
@@ -207,6 +210,7 @@ export default function DonorDashboard(): JSX.Element {
         setLoadingRequests(false);
       }
 
+      // Fetch notifications
       try {
         setLoadingNotifications(true);
         const notificationRes = await axios.get(
@@ -404,7 +408,6 @@ export default function DonorDashboard(): JSX.Element {
     setSearchTerm("");
   };
 
-  // Get search placeholder based on active tab
   const getSearchPlaceholder = () => {
     if (activeTab === "donations") {
       return "Search your donations...";
@@ -415,7 +418,6 @@ export default function DonorDashboard(): JSX.Element {
     }
   };
 
-  // Get search options based on active tab
   const getSearchOptions = () => {
     if (activeTab === "donations") {
       return (
@@ -569,7 +571,6 @@ export default function DonorDashboard(): JSX.Element {
               )}
             </div>
 
-            {/* Dynamic Search Type Dropdown */}
             <select 
               value={searchType}
               onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
@@ -630,7 +631,7 @@ export default function DonorDashboard(): JSX.Element {
           {searchTerm && (
             <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
               {activeTab === "donations" && (
-                <>Showing {shownListings.length} of {activeTab === "donations" ? normalizedDonations.length : 0} donations matching "{searchTerm}"</>
+                <>Showing {shownListings.length} of {normalizedDonations.length} donations matching "{searchTerm}"</>
               )}
               {activeTab === "requests" && (
                 <>Showing {filteredRequests.length} of {incomingRequests.length} requests matching "{searchTerm}"</>
@@ -681,7 +682,7 @@ export default function DonorDashboard(): JSX.Element {
               className={`dd-tab ${activeTab === "donations" ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("donations");
-                setSearchTerm(""); // Clear search when switching tabs
+                setSearchTerm("");
               }}
             >
               My Donations
@@ -691,7 +692,7 @@ export default function DonorDashboard(): JSX.Element {
               onClick={() => {
                 setActiveTab("requests");
                 setActiveMenu("inbox");
-                setSearchTerm(""); // Clear search when switching tabs
+                setSearchTerm("");
               }}
             >
               My Requests
