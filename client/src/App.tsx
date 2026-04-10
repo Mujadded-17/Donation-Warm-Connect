@@ -11,6 +11,7 @@ import Dashboard from "./pages/Dashboard";
 import ProfilePage from "./pages/ProfilePage";
 import StoriesPage from "./pages/StoriesPage";
 import DonorImpact from "./pages/DonerImpact";
+import CommunityPage from "./pages/CommunityPage";
 
 
 
@@ -32,6 +33,7 @@ function App() {
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/stories" element={<StoriesPage />} />
         <Route path="/donor-impact" element={<DonorImpact />} />
+        <Route path="/community" element={<CommunityPage />} />
       </Routes>
     </>
   );

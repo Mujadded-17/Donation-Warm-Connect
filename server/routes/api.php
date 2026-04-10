@@ -8,6 +8,7 @@ use App\Http\Controllers\DonationController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\StoryController;
+use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
@@ -26,6 +27,14 @@ Route::post('/login', [AuthenticatedSessionController::class, 'store']);
 Route::get('/stories', [StoryController::class, 'index']);
 Route::get('/stories/{storyId}/comments', [StoryController::class, 'getComments']);
 
+// Public community routes (anyone can view community stats)
+Route::get('/community/stats', [CommunityController::class, 'getStats']);
+Route::get('/community/top-donors', [CommunityController::class, 'getTopDonors']);
+Route::get('/community/recent-activity', [CommunityController::class, 'getRecentActivity']);
+Route::get('/community/gratitude-wall', [CommunityController::class, 'getGratitudeWall']);
+Route::get('/community/badges/{userId}', [CommunityController::class, 'getUserBadges']);
+Route::post('/community/thank-you', [CommunityController::class, 'addThankYou'])->middleware('auth:sanctum');
+
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
@@ -37,8 +46,6 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::delete('/items/{id}', [ItemController::class, 'destroy']);
 
     Route::get('/user/donations/{userId}', [ItemController::class, 'getUserDonations']);
-
-    // Donor Impact Route
     Route::get('/donor/impact/{donorId}', [ItemController::class, 'getDonorImpact']);
 
     // Admin routes for items
@@ -62,7 +69,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/chat/messages/{otherUserId}', [ChatController::class, 'getMessages']);
     Route::post('/chat/messages', [ChatController::class, 'sendMessage']);
 
-    // Story routes (authenticated users can create and like stories)
+    // Story routes
     Route::post('/stories', [StoryController::class, 'store']);
     Route::post('/stories/{storyId}/like', [StoryController::class, 'like']);
     Route::post('/stories/{storyId}/comments', [StoryController::class, 'addComment']);

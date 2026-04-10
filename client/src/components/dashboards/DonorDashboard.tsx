@@ -3,6 +3,8 @@ import axios from "axios";
 import "../../styles/donorDashboard.css";
 import { Link } from "react-router-dom";
 import ChatPanel from "../chat/ChatPanel";
+import DonorImpact from "../../pages/DonerImpact";
+import CommunityPage from "../../pages/CommunityPage";
 
 const API = "http://127.0.0.1:8000/api";
 
@@ -16,8 +18,8 @@ type User = {
   profile_url?: string | null;
 };
 
-type MenuKey = "dashboard" | "offer" | "impact" | "inbox";
-type TabKey = "donations" | "requests" | "messages" | "community";
+type MenuKey = "dashboard" | "offer" | "impact" | "inbox" | "community";
+type TabKey = "donations" | "requests" | "messages";
 type DonationSubTabKey = "active" | "past";
 
 type IncomingRequest = {
@@ -256,7 +258,6 @@ export default function DonorDashboard(): JSX.Element {
         item.approval_status || item.status || "pending"
       ).toLowerCase();
 
-      // Get the date from post_date field
       const dateString = item.post_date || item.created_at || item.posted_at || item.updated_at || "";
 
       return {
@@ -444,186 +445,19 @@ export default function DonorDashboard(): JSX.Element {
 
   const isLoading = loadingProfile || loadingDonations;
 
-  return (
-    <div className="dd">
-      <aside className="dd-sidebar">
-        <div className="dd-brand">
-          <span className="dd-brandMark" />
-          <span className="dd-brandText">warmConnect</span>
-        </div>
-
-        <div className="dd-profile">
-          <div className="dd-avatar">
-            {user?.profile_url ? (
-              <img
-                src={user.profile_url}
-                alt={displayName}
-                className="dd-avatarImg"
-              />
-            ) : (
-              <div className="dd-avatarFallback">{initials}</div>
-            )}
-          </div>
-
-          <div className="dd-profileMeta">
-            <div className="dd-profileName">{displayName}</div>
-            <div className="dd-profileRole">{roleLabel}</div>
-            <div className="dd-profileEmail">{user?.email || "No email"}</div>
-          </div>
-        </div>
-
-        <nav className="dd-nav">
-          <button
-            className={`dd-navItem ${activeMenu === "dashboard" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("dashboard")}
-          >
-            <span className="dd-ico">▦</span>
-            Dashboard
-          </button>
-
-          <Link
-            to="/post-donation"
-            className={`dd-navItem ${activeMenu === "offer" ? "isActive" : ""}`}
-            onClick={() => setActiveMenu("offer")}
-          >
-            <span className="dd-ico">✦</span>
-            Offer a Gift
-          </Link>
-
-          {/* Updated My Impact - Now navigates to impact page */}
-          <Link to="/donor-impact" className="dd-navItem">
-            <span className="dd-ico">♡</span>
-            My Impact
-          </Link>
-
-          <button
-            className={`dd-navItem ${activeMenu === "inbox" ? "isActive" : ""}`}
-            onClick={() => {
-              setActiveMenu("inbox");
-              setActiveTab("requests");
-            }}
-          >
-            <span className="dd-ico">✉</span>
-            Inbox
-              {stats.unreadNotifications > 0 && (
-                <span className="dd-badge">{stats.unreadNotifications}</span>
-              )}
-          </button>
-
-          <button
-            className={`dd-navItem ${activeMenu === "impact" && activeTab === "messages" ? "isActive" : ""}`}
-            onClick={() => {
-              setActiveMenu("impact");
-              setActiveTab("messages");
-            }}
-          >
-            <span className="dd-ico">💬</span>
-            Messages
-          </button>
-
-          <Link to="/profile" className="dd-navItem">
-            <span className="dd-ico">👤</span>
-            My Profile
-          </Link>
-        </nav>
-
-        <div className="dd-sidebarBottom">
-          <Link to="/post-donation" className="dd-createBtn">
-            <span className="dd-plus">＋</span> Create New
-          </Link>
-          <div className="dd-help">
-            <span className="dd-helpIco">?</span> How warmConnect works
-          </div>
-        </div>
-      </aside>
-
-      <main className="dd-main">
-        <header className="dd-topbar">
-          <div className="rd-topLinks">
-            <Link to="/" className="rd-topLink">
-              Home
-            </Link>
-            <Link to="/explore" className="rd-topLink">
-              Explore
-            </Link>
-            <Link to="/stories" className="rd-topLink">
-              Stories
-            </Link>
-          </div>
-
-          <div className="dd-topRight">
-            <div className="dd-search">
-              <span className="dd-searchIco">🔎</span>
-              <input 
-                placeholder={getSearchPlaceholder()} 
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button 
-                  onClick={clearSearch}
-                  style={{ 
-                    background: 'none', 
-                    border: 'none', 
-                    cursor: 'pointer',
-                    marginLeft: '5px',
-                    fontSize: '16px'
-                  }}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-
-            <select 
-              value={searchType}
-              onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
-              style={{
-                padding: '8px',
-                borderRadius: '8px',
-                border: '1px solid #e2e8f0',
-                marginLeft: '10px',
-                backgroundColor: 'white',
-                cursor: 'pointer'
-              }}
-            >
-              {getSearchOptions()}
-            </select>
-
-            <button
-              className="dd-notificationBtn"
-              aria-label="Notifications"
-              onClick={() => {
-                setActiveMenu("inbox");
-                setActiveTab("requests");
-              }}
-              type="button"
-            >
-              <span>🔔</span>
-              <span>Notifications</span>
-              {stats.unreadNotifications > 0 && (
-                <span className="dd-notificationCount">{stats.unreadNotifications}</span>
-              )}
-            </button>
-
-            <Link to="/profile" className="dd-iconBtn" aria-label="Profile">
-              👤
-            </Link>
-
-            <div className="dd-miniAvatar" title={displayName}>
-              {user?.profile_url ? (
-                <img
-                  src={user.profile_url}
-                  alt={displayName}
-                  className="dd-miniAvatarImg"
-                />
-              ) : (
-                <span>{initials}</span>
-              )}
-            </div>
-          </div>
-        </header>
-
+  // Render the appropriate content based on activeMenu
+  const renderContent = () => {
+    if (activeMenu === "impact") {
+      return <DonorImpact />;
+    }
+    
+    if (activeMenu === "community") {
+      return <CommunityPage />;
+    }
+    
+    // Default dashboard view
+    return (
+      <>
         <section className="dd-greet">
           <h1>
             Hello <span className="dd-nameAccent">{displayName}!</span>
@@ -700,12 +534,6 @@ export default function DonorDashboard(): JSX.Element {
               }}
             >
               My Requests
-            </button>
-            <button
-              className={`dd-tab ${activeTab === "community" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("community")}
-            >
-              My Community
             </button>
             <button
               className={`dd-tab ${activeTab === "messages" ? "isActive" : ""}`}
@@ -856,6 +684,201 @@ export default function DonorDashboard(): JSX.Element {
             </a>
           </div>
         </section>
+      </>
+    );
+  };
+
+  return (
+    <div className="dd">
+      <aside className="dd-sidebar">
+        <div className="dd-brand">
+          <span className="dd-brandMark" />
+          <span className="dd-brandText">warmConnect</span>
+        </div>
+
+        <div className="dd-profile">
+          <div className="dd-avatar">
+            {user?.profile_url ? (
+              <img
+                src={user.profile_url}
+                alt={displayName}
+                className="dd-avatarImg"
+              />
+            ) : (
+              <div className="dd-avatarFallback">{initials}</div>
+            )}
+          </div>
+
+          <div className="dd-profileMeta">
+            <div className="dd-profileName">{displayName}</div>
+            <div className="dd-profileRole">{roleLabel}</div>
+            <div className="dd-profileEmail">{user?.email || "No email"}</div>
+          </div>
+        </div>
+
+        <nav className="dd-nav">
+          <button
+            className={`dd-navItem ${activeMenu === "dashboard" ? "isActive" : ""}`}
+            onClick={() => setActiveMenu("dashboard")}
+          >
+            <span className="dd-ico">▦</span>
+            Dashboard
+          </button>
+
+          <Link
+            to="/post-donation"
+            className={`dd-navItem ${activeMenu === "offer" ? "isActive" : ""}`}
+            onClick={() => setActiveMenu("offer")}
+          >
+            <span className="dd-ico">✦</span>
+            Offer a Gift
+          </Link>
+
+          <button
+            className={`dd-navItem ${activeMenu === "impact" ? "isActive" : ""}`}
+            onClick={() => setActiveMenu("impact")}
+          >
+            <span className="dd-ico">♡</span>
+            My Impact
+          </button>
+
+          <button
+            className={`dd-navItem ${activeMenu === "community" ? "isActive" : ""}`}
+            onClick={() => setActiveMenu("community")}
+          >
+            <span className="dd-ico">🌍</span>
+            My Community
+          </button>
+
+          <button
+            className={`dd-navItem ${activeMenu === "inbox" ? "isActive" : ""}`}
+            onClick={() => {
+              setActiveMenu("inbox");
+              setActiveTab("requests");
+            }}
+          >
+            <span className="dd-ico">✉</span>
+            Inbox
+            {stats.unreadNotifications > 0 && (
+              <span className="dd-badge">{stats.unreadNotifications}</span>
+            )}
+          </button>
+
+          <button
+            className={`dd-navItem ${activeMenu === "impact" && activeTab === "messages" ? "isActive" : ""}`}
+            onClick={() => {
+              setActiveMenu("impact");
+              setActiveTab("messages");
+            }}
+          >
+            <span className="dd-ico">💬</span>
+            Messages
+          </button>
+
+          <Link to="/profile" className="dd-navItem">
+            <span className="dd-ico">👤</span>
+            My Profile
+          </Link>
+        </nav>
+
+        <div className="dd-sidebarBottom">
+          <Link to="/post-donation" className="dd-createBtn">
+            <span className="dd-plus">＋</span> Create New
+          </Link>
+          <div className="dd-help">
+            <span className="dd-helpIco">?</span> How warmConnect works
+          </div>
+        </div>
+      </aside>
+
+      <main className="dd-main">
+        <header className="dd-topbar">
+          <div className="rd-topLinks">
+            <Link to="/" className="rd-topLink">
+              Home
+            </Link>
+            <Link to="/explore" className="rd-topLink">
+              Explore
+            </Link>
+            <Link to="/stories" className="rd-topLink">
+              Stories
+            </Link>
+          </div>
+
+          <div className="dd-topRight">
+            <div className="dd-search">
+              <span className="dd-searchIco">🔎</span>
+              <input 
+                placeholder={getSearchPlaceholder()} 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button 
+                  onClick={clearSearch}
+                  style={{ 
+                    background: 'none', 
+                    border: 'none', 
+                    cursor: 'pointer',
+                    marginLeft: '5px',
+                    fontSize: '16px'
+                  }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <select 
+              value={searchType}
+              onChange={(e) => setSearchType(e.target.value as "title" | "location" | "receiver")}
+              style={{
+                padding: '8px',
+                borderRadius: '8px',
+                border: '1px solid #e2e8f0',
+                marginLeft: '10px',
+                backgroundColor: 'white',
+                cursor: 'pointer'
+              }}
+            >
+              {getSearchOptions()}
+            </select>
+
+            <button
+              className="dd-notificationBtn"
+              aria-label="Notifications"
+              onClick={() => {
+                setActiveMenu("inbox");
+                setActiveTab("requests");
+              }}
+              type="button"
+            >
+              <span>🔔</span>
+              <span>Notifications</span>
+              {stats.unreadNotifications > 0 && (
+                <span className="dd-notificationCount">{stats.unreadNotifications}</span>
+              )}
+            </button>
+
+            <Link to="/profile" className="dd-iconBtn" aria-label="Profile">
+              👤
+            </Link>
+
+            <div className="dd-miniAvatar" title={displayName}>
+              {user?.profile_url ? (
+                <img
+                  src={user.profile_url}
+                  alt={displayName}
+                  className="dd-miniAvatarImg"
+                />
+              ) : (
+                <span>{initials}</span>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {renderContent()}
       </main>
     </div>
   );
