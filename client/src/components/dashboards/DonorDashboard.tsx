@@ -90,14 +90,6 @@ type NotificationItem = {
   create_time?: string;
 };
 
-// ✅ FIX: Helper that accepts `string` instead of `TabKey`, preventing
-// TypeScript from narrowing the type inside renderContent() and incorrectly
-// flagging the "messages" comparison as having no overlap with
-// "donations" | "requests".
-function isTabActive(activeTab: string, tab: string): boolean {
-  return activeTab === tab;
-}
-
 export default function DonorDashboard(): JSX.Element {
   const rawUser = localStorage.getItem("user");
   const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
@@ -466,16 +458,7 @@ export default function DonorDashboard(): JSX.Element {
       return <CommunityPage />;
     }
 
-    // Messages/Chat - when activeTab is "messages"
-    // ✅ FIX: Use isTabActive() helper so TypeScript does not narrow `activeTab`
-    // to "donations" | "requests" before this check, which previously caused:
-    // "This comparison appears to be unintentional because the types
-    // '"donations" | "requests"' and '"messages"' have no overlap."
-    if (isTabActive(activeTab, "messages")) {
-      return <ChatPanel currentUser={user} apiBase={API} />;
-    }
-
-    // Default dashboard view (Donations and Requests)
+    // Default dashboard view (Donations, Requests, and Messages)
     return (
       <>
         <section className="dd-greet">
@@ -537,7 +520,7 @@ export default function DonorDashboard(): JSX.Element {
         <section className="dd-panel">
           <div className="dd-tabs">
             <button
-              className={`dd-tab ${isTabActive(activeTab, "donations") ? "isActive" : ""}`}
+              className={`dd-tab ${activeTab === "donations" ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("donations");
                 setSearchTerm("");
@@ -546,7 +529,7 @@ export default function DonorDashboard(): JSX.Element {
               My Donations
             </button>
             <button
-              className={`dd-tab ${isTabActive(activeTab, "requests") ? "isActive" : ""}`}
+              className={`dd-tab ${activeTab === "requests" ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("requests");
                 setActiveMenu("inbox");
@@ -556,7 +539,7 @@ export default function DonorDashboard(): JSX.Element {
               My Requests
             </button>
             <button
-              className={`dd-tab ${isTabActive(activeTab, "messages") ? "isActive" : ""}`}
+              className={`dd-tab ${activeTab === "messages" ? "isActive" : ""}`}
               onClick={() => {
                 setActiveTab("messages");
               }}
@@ -571,7 +554,7 @@ export default function DonorDashboard(): JSX.Element {
             </div>
           </div>
 
-          {isTabActive(activeTab, "donations") && (
+          {activeTab === "donations" && (
             <div className="dd-subtabs">
               <button
                 className={`dd-subtab ${donationSubTab === "active" ? "isActive" : ""}`}
@@ -594,7 +577,7 @@ export default function DonorDashboard(): JSX.Element {
                 title="Loading data..."
                 text="Please wait while your dashboard data is fetched."
               />
-            ) : isTabActive(activeTab, "donations") ? (
+            ) : activeTab === "donations" ? (
               shownListings.length > 0 ? (
                 shownListings.map((item: any) => (
                   <ListingCard key={item._id} item={item} />
@@ -613,7 +596,7 @@ export default function DonorDashboard(): JSX.Element {
                   }
                 />
               )
-            ) : isTabActive(activeTab, "requests") ? (
+            ) : activeTab === "requests" ? (
               loadingRequests ? (
                 <EmptyState
                   title="Loading request notifications..."
@@ -649,6 +632,8 @@ export default function DonorDashboard(): JSX.Element {
                   text="When a receiver requests your item, details will appear here."
                 />
               )
+            ) : activeTab === "messages" ? (
+              <ChatPanel currentUser={user} apiBase={API} />
             ) : null}
           </div>
         </section>
