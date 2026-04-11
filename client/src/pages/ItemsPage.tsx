@@ -63,8 +63,8 @@ function ItemsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [requestingId, setRequestingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [viewMode] = useState<"grid" | "list">("grid");
+  const [verifiedOnly] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -317,9 +317,6 @@ function ItemsPage() {
               })}
             </div>
           </div>
-
-          
-
         </aside>
 
         <main className="explore-content">
@@ -334,16 +331,12 @@ function ItemsPage() {
                 aria-label="Search items"
               />
             </div>
-
-         
           </div>
 
           <div className="explore-header">
             <div>
               <h1 className="explore-heading">Donations Near You</h1>
-              <p className="explore-subtext">
-                {exploreSubtitle}
-              </p>
+              <p className="explore-subtext">{exploreSubtitle}</p>
             </div>
 
             <div className="results-count">

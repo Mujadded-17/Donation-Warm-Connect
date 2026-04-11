@@ -28,7 +28,7 @@ export default function ProfilePage() {
   const rawUser = localStorage.getItem("user");
   const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
 
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [msg, setMsg] = useState("");

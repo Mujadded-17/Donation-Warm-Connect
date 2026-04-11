@@ -1,14 +1,8 @@
-import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { getLatestItems } from "../apis/home";
 import type { LatestItem } from "../types/item";
-import { Link } from "react-router-dom";
 import "../styles/home.css";
-
-interface CanScrollState {
-  left: boolean;
-  right: boolean;
-}
 
 interface InfoCardProps {
   icon: React.ReactNode;
@@ -21,11 +15,6 @@ interface CategoryChipProps {
   label: string;
 }
 
-interface ListingCardProps {
-  item: LatestItem;
-  onClick?: () => void;
-}
-
 interface FooterColProps {
   title: string;
   links: string[];
@@ -33,65 +22,21 @@ interface FooterColProps {
 
 export default function HomePage(): JSX.Element {
   const navigate = useNavigate();
-  const sliderRef = useRef<HTMLDivElement | null>(null);
 
-  const [latestItems, setLatestItems] = useState<LatestItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string>("");
-
-  const [canScroll, setCanScroll] = useState<CanScrollState>({
-    left: false,
-    right: true,
-  });
+  const [, setLatestItems] = useState<LatestItem[]>([]);
 
   useEffect(() => {
     const loadItems = async () => {
       try {
-        setLoading(true);
-        setError("");
-
         const items = await getLatestItems(8);
         setLatestItems(items);
-      } catch (err: unknown) {
-        const message =
-          err instanceof Error ? err.message : "Failed to load items";
-        setError(message);
+      } catch {
         setLatestItems([]);
-      } finally {
-        setLoading(false);
       }
     };
 
     loadItems();
   }, []);
-
-  useEffect(() => {
-    const el = sliderRef.current;
-    if (!el) return;
-
-    const update = () => {
-      const left = el.scrollLeft > 8;
-      const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 8;
-      setCanScroll({ left, right });
-    };
-
-    update();
-    el.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-
-    return () => {
-      el.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, [latestItems]);
-
-  const scrollByCards = (dir: number) => {
-    const el = sliderRef.current;
-    if (!el) return;
-
-    const delta = Math.min(420, el.clientWidth * 0.9) * dir;
-    el.scrollBy({ left: delta, behavior: "smooth" });
-  };
 
   return (
     <div className="wc">
@@ -127,7 +72,6 @@ export default function HomePage(): JSX.Element {
             </div>
 
             <div className="wc-joined">
-              
               <div className="wc-joined-text">
                 Joined by <b>2,500+</b> locals at <b>WarmConnect</b> this month
               </div>
@@ -200,8 +144,8 @@ export default function HomePage(): JSX.Element {
             </div>
 
             <Link className="wc-link" to="/explore">
-  Explore All <span aria-hidden="true">→</span>
-</Link>
+              Explore All <span aria-hidden="true">→</span>
+            </Link>
           </div>
 
           <div className="wc-cats" id="categories">
@@ -213,8 +157,6 @@ export default function HomePage(): JSX.Element {
           </div>
         </div>
       </section>
-
-
 
       <section className="wc-section">
         <div className="wc-container">
@@ -355,72 +297,6 @@ function CategoryChip({ icon, label }: CategoryChipProps): JSX.Element {
     <div className="wc-cat">
       <div className="wc-cat-icon">{icon}</div>
       <div className="wc-cat-label">{label}</div>
-    </div>
-  );
-}
-
-function ListingCard({ item, onClick }: ListingCardProps): JSX.Element {
-  const desc =
-    item.description && item.description.trim().length > 0
-      ? item.description
-      : "No description";
-
-  return (
-    <div
-      className="wc-listing"
-      role="button"
-      tabIndex={0}
-      onClick={onClick}
-      onKeyDown={(e: React.KeyboardEvent<HTMLDivElement>) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
-    >
-      <div className="wc-listing-top">
-        <div className="wc-tag">
-          {(item.category_name || "SHARE").toUpperCase()}
-        </div>
-        <div className="wc-like" aria-hidden="true">
-          ♡
-        </div>
-      </div>
-
-      <div className="wc-listing-media">
-        {item.image_url ? (
-          <img src={item.image_url} alt={item.title || "Item"} />
-        ) : (
-          <div className="wc-listing-empty">
-            <div className="wc-heart" aria-hidden="true">
-              ♥
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="wc-listing-meta">
-        <span className="wc-pin" aria-hidden="true">
-          ⦿
-        </span>
-        <span>{item.pickup_location || "Location not set"}</span>
-      </div>
-
-      <div className="wc-listing-title">{item.title}</div>
-      <div className="wc-listing-desc">
-        {desc.length > 70 ? `${desc.slice(0, 70)}...` : desc}
-      </div>
-
-      <button
-        className="wc-listing-cta"
-        onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-          e.stopPropagation();
-          onClick?.();
-        }}
-        type="button"
-      >
-        {item.status === "available" ? "Request Item" : "View"}
-      </button>
     </div>
   );
 }
