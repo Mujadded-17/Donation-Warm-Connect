@@ -292,3 +292,41 @@
     font-size: 1.5rem;
   }
 }
+
+.verification-box {
+  width: 100%;
+  margin-top: 8px;
+  padding: 14px;
+  border: 1px solid #f3d2b8;
+  background: #fff7f0;
+  border-radius: 14px;
+}
+
+.verification-text {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: #7c4a24;
+}
+
+.btn-secondary {
+  width: 100%;
+  padding: 12px 16px;
+  border: 1px solid #f39658;
+  border-radius: 999px;
+  background: #fff;
+  color: #f26a2e;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.btn-secondary:hover {
+  background: #fff4eb;
+}
+
+.btn-secondary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
