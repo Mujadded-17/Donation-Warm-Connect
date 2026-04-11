@@ -187,7 +187,6 @@ export default function AdminDashboard(): JSX.Element {
 
   const displayName = user?.name || "Silvia Admin";
   const displayEmail = user?.email || ADMIN_EMAIL;
-  const roleLabel = String(user?.user_type || "admin").trim().toUpperCase();
 
   const initials = useMemo(() => {
     return displayName
@@ -249,13 +248,6 @@ export default function AdminDashboard(): JSX.Element {
       `${storyStats.pending} stories pending approval`,
     ];
   }, [stats, storyStats]);
-
-  const adminQuickLinks = [
-    { label: "Open Profile", to: "/profile", icon: "🙍" },
-    { label: "Review Donations", to: "/my-donations", icon: "🎁" },
-    { label: "Explore Items", to: "/explore", icon: "🔎" },
-    { label: "Community Hub", to: "/community", icon: "💬" },
-  ];
 
   const pendingItems = useMemo(() => {
     return items.filter(
