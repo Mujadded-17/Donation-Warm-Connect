@@ -40,6 +40,7 @@ class DonationController extends Controller
         });
     }
 
+    // Receiver requests an item
     public function requestItem(Request $request)
     {
         $validated = $request->validate([
@@ -133,6 +134,7 @@ class DonationController extends Controller
         ], 201);
     }
 
+    // Get incoming requests for a donor
     public function getIncomingRequests(Request $request, $donorId)
     {
         $authUser = $request->user();
@@ -180,6 +182,7 @@ class DonationController extends Controller
         ]);
     }
 
+    // Donor decides on a request (approve/reject)
     public function decideRequest(Request $request, $donationId)
     {
         $validated = $request->validate([
@@ -244,15 +247,146 @@ class DonationController extends Controller
             'create_time' => now(),
         ]);
 
-        // If rejected, you might want to send additional notification to donor about next steps
-        if ($validated['status'] === 'rejected') {
-            // Optionally notify other pending requesters that the item is still available
-            // This is optional and depends on your business logic
+        // Send chat message if approved
+        if ($validated['status'] === 'approved') {
+            $this->ensureChatMessageTable();
+            
+            DB::table('chat_message')->insert([
+                'sender_id' => $authUser->user_id,
+                'receiver_id' => $donation->receiver_id,
+                'message' => 'Your request for "' . ($item->title ?? 'Item') . '" has been approved! Please coordinate pickup at: ' . ($item->pickup_location ?? 'location to be confirmed'),
+                'create_time' => now(),
+            ]);
         }
 
         return response()->json([
             'success' => true,
             'message' => 'Request ' . $validated['status'] . ' successfully',
+        ]);
+    }
+
+    // ========== RECEIVER REQUESTS METHODS ==========
+
+    // Get receiver's requests (for receiver dashboard - My Requests)
+    public function getReceiverRequests($userId)
+    {
+        $requests = DB::table('donation as d')
+            ->join('item as i', 'i.item_id', '=', 'd.item_id')
+            ->join('user as u', 'u.user_id', '=', 'i.donor_id')
+            ->where('d.receiver_id', $userId)
+            ->orderBy('d.request_date', 'desc')
+            ->select([
+                'd.donation_id',
+                'd.item_id',
+                'd.status as donation_status',
+                'd.request_date',
+                'i.title',
+                'i.description',
+                'i.images',
+                'i.pickup_location',
+                'u.name as donor_name',
+                'u.user_id as donor_id',
+            ])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'requests' => $requests
+        ]);
+    }
+
+    // Cancel a request (receiver cancels before donor responds)
+    public function cancelRequest($donationId)
+    {
+        $donation = DB::table('donation')->where('donation_id', $donationId)->first();
+        
+        if (!$donation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Request not found'
+            ], 404);
+        }
+        
+        // Only allow cancellation if status is still 'requested'
+        if ($donation->status !== 'requested') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot cancel this request as it has already been ' . $donation->status
+            ], 400);
+        }
+        
+        DB::table('donation')->where('donation_id', $donationId)->delete();
+        
+        return response()->json([
+            'success' => true,
+            'message' => 'Request cancelled successfully'
+        ]);
+    }
+
+    // ========== ADMIN METHODS ==========
+
+    // Get all donations (for admin)
+    public function getAllDonations()
+    {
+        $donations = DB::table('donation as d')
+            ->join('item as i', 'i.item_id', '=', 'd.item_id')
+            ->join('user as donor', 'donor.user_id', '=', 'd.donor_id')
+            ->join('user as receiver', 'receiver.user_id', '=', 'd.receiver_id')
+            ->orderBy('d.request_date', 'desc')
+            ->select([
+                'd.donation_id',
+                'd.item_id',
+                'd.status',
+                'd.request_date',
+                'i.title as item_title',
+                'donor.name as donor_name',
+                'donor.email as donor_email',
+                'receiver.name as receiver_name',
+                'receiver.email as receiver_email',
+            ])
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'donations' => $donations
+        ]);
+    }
+
+    // Get single donation details
+    public function getDonation($donationId)
+    {
+        $donation = DB::table('donation as d')
+            ->join('item as i', 'i.item_id', '=', 'd.item_id')
+            ->join('user as donor', 'donor.user_id', '=', 'd.donor_id')
+            ->join('user as receiver', 'receiver.user_id', '=', 'd.receiver_id')
+            ->where('d.donation_id', $donationId)
+            ->select([
+                'd.donation_id',
+                'd.item_id',
+                'd.status',
+                'd.request_date',
+                'i.title as item_title',
+                'i.description as item_description',
+                'i.pickup_location',
+                'donor.name as donor_name',
+                'donor.email as donor_email',
+                'donor.phone as donor_phone',
+                'receiver.name as receiver_name',
+                'receiver.email as receiver_email',
+                'receiver.phone as receiver_phone',
+            ])
+            ->first();
+
+        if (!$donation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Donation not found'
+            ], 404);
+        }
+
+        return response()->json([
+            'success' => true,
+            'donation' => $donation
         ]);
     }
 }
