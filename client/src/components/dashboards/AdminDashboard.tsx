@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import axios from "axios";
 import { Link } from "react-router-dom";
 import "../../styles/adminDashboard.css";
+import AdminUserManagement from "./AdminUserManagement";
 
 type User = {
   user_id?: number;
@@ -37,6 +38,8 @@ type Story = {
   created_at: string;
 };
 
+type DonationFilter = "all" | "pending" | "approved" | "rejected";
+
 const ADMIN_EMAIL = "silviaadmin@gmail.com";
 const API = "http://127.0.0.1:8000/api";
 
@@ -54,6 +57,7 @@ export default function AdminDashboard(): JSX.Element {
   const [profileError, setProfileError] = useState("");
   const [itemError, setItemError] = useState("");
   const [storyError, setStoryError] = useState("");
+  const [donationFilter, setDonationFilter] = useState<DonationFilter>("pending");
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [updatingStoryId, setUpdatingStoryId] = useState<number | null>(null);
 
@@ -183,6 +187,7 @@ export default function AdminDashboard(): JSX.Element {
 
   const displayName = user?.name || "Silvia Admin";
   const displayEmail = user?.email || ADMIN_EMAIL;
+  const roleLabel = String(user?.user_type || "admin").trim().toUpperCase();
 
   const initials = useMemo(() => {
     return displayName
@@ -218,6 +223,23 @@ export default function AdminDashboard(): JSX.Element {
     };
   }, [pendingStories]);
 
+  const donationFilterCounts = useMemo(() => {
+    return {
+      all: items.length,
+      pending: items.filter((item) => String(item.status || "").toLowerCase() === "pending").length,
+      approved: items.filter((item) => String(item.status || "").toLowerCase() === "approved").length,
+      rejected: items.filter((item) => String(item.status || "").toLowerCase() === "rejected").length,
+    };
+  }, [items]);
+
+  const filteredDonationItems = useMemo(() => {
+    if (donationFilter === "all") {
+      return items;
+    }
+
+    return items.filter((item) => String(item.status || "").toLowerCase() === donationFilter);
+  }, [donationFilter, items]);
+
   const recentActivities = useMemo(() => {
     return [
       `${stats.pending} items are waiting for review`,
@@ -227,6 +249,13 @@ export default function AdminDashboard(): JSX.Element {
       `${storyStats.pending} stories pending approval`,
     ];
   }, [stats, storyStats]);
+
+  const adminQuickLinks = [
+    { label: "Open Profile", to: "/profile", icon: "🙍" },
+    { label: "Review Donations", to: "/my-donations", icon: "🎁" },
+    { label: "Explore Items", to: "/explore", icon: "🔎" },
+    { label: "Community Hub", to: "/community", icon: "💬" },
+  ];
 
   const pendingItems = useMemo(() => {
     return items.filter(
@@ -446,6 +475,76 @@ export default function AdminDashboard(): JSX.Element {
           </>
         )}
 
+        {activeMenu === "donations" && (
+          <section className="ad-panel ad-sectionPanel">
+            <div className="ad-sectionHeaderRow">
+              <div>
+                <h2>Donation Review</h2>
+                <p>Review every donation item and update its status from one place.</p>
+              </div>
+              <div className="ad-sectionActions">
+                <Link to="/my-donations" className="ad-ghostBtn">Open My Donations</Link>
+                <Link to="/explore" className="ad-ghostBtn">Open Explore</Link>
+              </div>
+            </div>
+
+            <div className="ad-filterRow">
+              {(["all", "pending", "approved", "rejected"] as DonationFilter[]).map((filter) => (
+                <button
+                  key={filter}
+                  type="button"
+                  className={`ad-filterBtn ${donationFilter === filter ? "isActive" : ""}`}
+                  onClick={() => setDonationFilter(filter)}
+                >
+                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                  <span>{donationFilterCounts[filter]}</span>
+                </button>
+              ))}
+            </div>
+
+            {loadingItems ? (
+              <div className="ad-loading">Loading donation queue...</div>
+            ) : filteredDonationItems.length === 0 ? (
+              <div className="ad-empty">No donations found for this status.</div>
+            ) : (
+              <div className="ad-itemList ad-itemList--full">
+                {filteredDonationItems.map((item) => (
+                  <div className="ad-itemRow" key={item.item_id}>
+                    <div className="ad-itemMain">
+                      <div className="ad-itemTitle">{item.title || "Untitled item"}</div>
+                      <div className="ad-itemMeta">
+                        ID #{item.item_id} • {formatDate(item.post_date)} • {item.pickup_location || "No location"}
+                      </div>
+                    </div>
+
+                    <div className="ad-itemActions">
+                      <span className={`ad-statusPill is-${String(item.status || "unknown").toLowerCase()}`}>
+                        {String(item.status || "unknown").toUpperCase()}
+                      </span>
+                      <button
+                        type="button"
+                        className="ad-approveBtn"
+                        disabled={updatingId === item.item_id || String(item.status || "").toLowerCase() === "approved"}
+                        onClick={() => updateItemStatus(item.item_id, "approved")}
+                      >
+                        {updatingId === item.item_id ? "Updating..." : "Approve"}
+                      </button>
+                      <button
+                        type="button"
+                        className="ad-rejectBtn"
+                        disabled={updatingId === item.item_id || String(item.status || "").toLowerCase() === "rejected"}
+                        onClick={() => updateItemStatus(item.item_id, "rejected")}
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+
         {/* Story Moderation View */}
         {activeMenu === "stories" && (
           <section className="ad-story-section">
@@ -522,16 +621,77 @@ export default function AdminDashboard(): JSX.Element {
 
         {/* Placeholder for other sections */}
         {activeMenu === "users" && (
-          <section className="ad-panel">
-            <h2>User Management</h2>
-            <p>User management features coming soon...</p>
+          <section className="ad-panel ad-sectionPanel">
+            <div className="ad-sectionHeaderRow">
+              <div>
+                <h2>User Management</h2>
+                <p>Search donors or receivers, chat with them privately, and ban or unban accounts.</p>
+              </div>
+            </div>
+
+            <AdminUserManagement currentUser={user} apiBase={API} />
           </section>
         )}
 
         {activeMenu === "settings" && (
-          <section className="ad-panel">
-            <h2>Platform Settings</h2>
-            <p>Platform settings coming soon...</p>
+          <section className="ad-panel ad-sectionPanel">
+            <div className="ad-sectionHeaderRow">
+              <div>
+                <h2>Platform Settings</h2>
+                <p>Quick platform health view and admin shortcuts.</p>
+              </div>
+            </div>
+
+            <div className="ad-settingsGrid">
+              <article className="ad-settingCard">
+                <span>Donation queue</span>
+                <strong>{stats.pending} pending</strong>
+                <p>Items waiting for your approval.</p>
+              </article>
+
+              <article className="ad-settingCard">
+                <span>Published items</span>
+                <strong>{stats.approved} approved</strong>
+                <p>Items visible in explore right now.</p>
+              </article>
+
+              <article className="ad-settingCard">
+                <span>Story moderation</span>
+                <strong>{storyStats.pending} pending</strong>
+                <p>Community stories needing review.</p>
+              </article>
+            </div>
+
+            <div className="ad-shortcutGrid">
+              <Link to="/" className="ad-shortcutCard">
+                <span className="ad-shortcutIcon">🏠</span>
+                <span>
+                  <strong>Home</strong>
+                  <small>Return to landing page</small>
+                </span>
+              </Link>
+              <button type="button" className="ad-shortcutCard" onClick={() => setActiveMenu("dashboard") }>
+                <span className="ad-shortcutIcon">📊</span>
+                <span>
+                  <strong>Dashboard</strong>
+                  <small>Back to overview</small>
+                </span>
+              </button>
+              <button type="button" className="ad-shortcutCard" onClick={() => setActiveMenu("donations") }>
+                <span className="ad-shortcutIcon">🎁</span>
+                <span>
+                  <strong>Donation Review</strong>
+                  <small>Open moderation queue</small>
+                </span>
+              </button>
+              <button type="button" className="ad-shortcutCard" onClick={() => setActiveMenu("stories") }>
+                <span className="ad-shortcutIcon">📖</span>
+                <span>
+                  <strong>Story Moderation</strong>
+                  <small>Review community stories</small>
+                </span>
+              </button>
+            </div>
           </section>
         )}
       </main>
