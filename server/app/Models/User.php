@@ -21,11 +21,19 @@ class User extends Authenticatable
         'phone',
         'address',
         'user_type',
-        'profile_url'
+        'profile_url',
+        'is_banned',
+        'ban_reason',
+        'banned_at'
     ];
 
     protected $hidden = [
         'pass_hash'
+    ];
+
+    protected $casts = [
+        'is_banned' => 'boolean',
+        'banned_at' => 'datetime',
     ];
 
     public function getAuthPassword()
