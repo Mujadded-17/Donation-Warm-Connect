@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\SavedItemController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
@@ -40,6 +41,9 @@ Route::post('/community/thank-you', [CommunityController::class, 'addThankYou'])
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
+});
+
+Route::middleware(['auth:sanctum', 'check.banned'])->group(function () {
     Route::get('/me', [AuthenticatedSessionController::class, 'me']);
 
     // Item routes
@@ -62,6 +66,11 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin routes for items
     Route::get('/admin/items/pending', [ItemController::class, 'getPendingItems']);
     Route::put('/admin/items/{id}/status', [ItemController::class, 'updateStatus']);
+
+    // Admin user moderation routes
+    Route::get('/admin/users/search', [AdminUserController::class, 'search']);
+    Route::put('/admin/users/{userId}/ban', [AdminUserController::class, 'ban']);
+    Route::put('/admin/users/{userId}/unban', [AdminUserController::class, 'unban']);
 
     // Profile routes
     Route::get('/profile/{userId}', [ProfileController::class, 'show']);
