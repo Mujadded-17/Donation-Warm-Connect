@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 
 const API = "http://127.0.0.1:8000/api";
@@ -11,7 +11,9 @@ type User = {
 
 export default function Navbar(): JSX.Element {
   const navigate = useNavigate();
+  const location = useLocation();
   const [user, setUser] = useState<User>(null);
+  const [searchText, setSearchText] = useState("");
 
   const clearAuthState = (): void => {
     localStorage.removeItem("user");
@@ -136,6 +138,17 @@ export default function Navbar(): JSX.Element {
     };
   }, [user]);
 
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearchText(params.get("q") || "");
+  }, [location.pathname, location.search]);
+
+  const handleSearchSubmit = (e: React.FormEvent<HTMLFormElement>): void => {
+    e.preventDefault();
+    const term = searchText.trim();
+    navigate(term ? `/explore?q=${encodeURIComponent(term)}` : "/explore");
+  };
+
   return (
     <header className="wc-nav">
       <div className="wc-nav-inner wc-nav-container">
@@ -155,14 +168,18 @@ export default function Navbar(): JSX.Element {
         </nav>
 
         <div className="wc-nav-right">
-          <div className="wc-search" role="search">
-            <SearchIcon />
+          <form className="wc-search" role="search" onSubmit={handleSearchSubmit}>
+            <button type="submit" className="wc-search-submit" aria-label="Search">
+              <SearchIcon />
+            </button>
             <input
               aria-label="Search"
               placeholder="Search for items near you..."
               autoComplete="off"
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
             />
-          </div>
+          </form>
 
           <div className="wc-nav-actions">
             {!user ? (

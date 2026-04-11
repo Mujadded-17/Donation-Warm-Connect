@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/ExploreNeeds.css";
 
 const API = "http://127.0.0.1:8000/api";
@@ -50,6 +50,7 @@ const getStoredUser = (): User | null => {
 
 function ItemsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = getStoredUser();
   const isAdminUser =
     String(currentUser?.user_type || "").toLowerCase() === "admin" ||
@@ -64,6 +65,11 @@ function ItemsPage() {
   const [requestingId, setRequestingId] = useState<number | null>(null);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const [verifiedOnly, setVerifiedOnly] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearch(params.get("q") || "");
+  }, [location.search]);
 
   useEffect(() => {
     const loadData = async () => {
