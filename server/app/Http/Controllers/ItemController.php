@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Mail\DonationPendingMail;
+use App\Mail\DonationApprovedMail;
+use App\Mail\DonationRejectedMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
@@ -125,16 +127,39 @@ class ItemController extends Controller
 
     // Update item status (for admin)
     public function updateStatus(Request $request, $id)
-    {
-        DB::table('item')
-            ->where('item_id', $id)
-            ->update(['status' => $request->status]);
+{
+    $status = $request->status;
 
-        return response()->json([
-            'message' => 'Status updated successfully',
-            'status' => $request->status
-        ]);
+    // update item
+    DB::table('item')
+        ->where('item_id', $id)
+        ->update(['status' => $status]);
+
+    // get item
+    $item = DB::table('item')->where('item_id', $id)->first();
+
+    // get donor
+    $user = DB::table('user')->where('user_id', $item->donor_id)->first();
+
+    try {
+        if ($status === 'approved') {
+            Mail::to($user->email)
+                ->send(new DonationApprovedMail($user, $item));
+        }
+
+        if ($status === 'rejected') {
+            Mail::to($user->email)
+                ->send(new DonationRejectedMail($user, $item));
+        }
+    } catch (\Throwable $e) {
+        \Log::error('Status email failed: ' . $e->getMessage());
     }
+
+    return response()->json([
+        'message' => 'Status updated successfully',
+        'status' => $status
+    ]);
+}
 
     // Check if an item is available for request
     public function checkAvailability($itemId)

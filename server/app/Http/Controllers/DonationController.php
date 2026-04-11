@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\ItemRequestedMail;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -41,7 +43,7 @@ class DonationController extends Controller
     }
 
     // Receiver requests an item
-    public function requestItem(Request $request)
+        public function requestItem(Request $request)
     {
         $validated = $request->validate([
             'item_id' => ['required', 'integer', 'exists:item,item_id'],
@@ -127,6 +129,18 @@ class DonationController extends Controller
             'message' => $receiver->name . ' (' . $receiver->email . ') requested item "' . $item->title . '".',
             'create_time' => now(),
         ]);
+
+        // Send email to donor
+        $donor = DB::table('user')->where('user_id', $item->donor_id)->first();
+
+        if ($donor && !empty($donor->email)) {
+            try {
+                Mail::to($donor->email)
+                    ->send(new ItemRequestedMail($donor, $item, $receiver));
+            } catch (\Throwable $e) {
+                \Log::error('Request email failed: ' . $e->getMessage());
+            }
+        }
 
         return response()->json([
             'success' => true,
