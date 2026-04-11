@@ -9,6 +9,9 @@ CREATE TABLE user (
   address VARCHAR(255),
   user_type VARCHAR(30) NOT NULL,
   profile_url VARCHAR(255),
+  is_banned TINYINT(1) DEFAULT 0,
+  ban_reason VARCHAR(255),
+  banned_at DATETIME NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
