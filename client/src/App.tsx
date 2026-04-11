@@ -12,8 +12,8 @@ import ProfilePage from "./pages/ProfilePage";
 import StoriesPage from "./pages/StoriesPage";
 import DonorImpact from "./pages/DonerImpact";
 import CommunityPage from "./pages/CommunityPage";
-
-
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 function App() {
   return (
@@ -29,11 +29,14 @@ function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Register />} />
-        <Route path="*" element={<NotFoundPage />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
+        <Route path="/password-reset/:token" element={<ResetPassword />} />
         <Route path="/profile" element={<ProfilePage />} />
         <Route path="/stories" element={<StoriesPage />} />
         <Route path="/donor-impact" element={<DonorImpact />} />
         <Route path="/community" element={<CommunityPage />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </>
   );

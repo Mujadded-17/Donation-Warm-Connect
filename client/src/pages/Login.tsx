@@ -179,6 +179,9 @@ export default function Login() {
                 </button>
               </div>
             )}
+            <p style={{ marginTop: "10px" }}>
+               <Link to="/forgot-password">Forgot Password?</Link>
+            </p>
 
             <p>
               New user? <Link to="/register">Register</Link>
