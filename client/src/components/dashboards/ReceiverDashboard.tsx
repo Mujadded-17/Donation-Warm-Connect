@@ -45,6 +45,20 @@ type RequestedItem = {
   donation_status: string;
 };
 
+type SavedItem = {
+  saved_id: number;
+  item_id: number;
+  title: string;
+  description: string;
+  images: string;
+  pickup_location: string;
+  delivery_available: number | string;
+  post_date: string;
+  donor_id: number;
+  donor_name: string;
+  saved_at: string;
+};
+
 type StatCardProps = {
   label: string;
   value: string;
@@ -53,7 +67,12 @@ type StatCardProps = {
 };
 
 type RequestCardProps = {
-  item: Item;
+  item: Item | SavedItem;
+  isSaved?: boolean;
+  isSaving?: boolean;
+  onSave?: () => void;
+  onUnsave?: () => void;
+  showSaveButton?: boolean;
 };
 
 type EmptyStateProps = {
@@ -69,9 +88,13 @@ export default function ReceiverDashboard(): JSX.Element {
   const [items, setItems] = useState<Item[]>([]);
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [requestedItems, setRequestedItems] = useState<RequestedItem[]>([]);
+  const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
+  const [savedItemIds, setSavedItemIds] = useState<Set<number>>(new Set());
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("matched");
   const [loadingRequests, setLoadingRequests] = useState(false);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savingId, setSavingId] = useState<number | null>(null);
   
   // Search state - ONLY affects items list
   const [searchTerm, setSearchTerm] = useState("");
@@ -136,6 +159,7 @@ export default function ReceiverDashboard(): JSX.Element {
       // Fetch requested items
       if (storedUser?.user_id) {
         await fetchRequestedItems();
+        await fetchSavedItems();
       }
     };
 
@@ -163,6 +187,91 @@ export default function ReceiverDashboard(): JSX.Element {
       console.error("Failed to fetch requested items:", error);
     } finally {
       setLoadingRequests(false);
+    }
+  };
+
+  const fetchSavedItems = async () => {
+    if (!storedUser?.user_id) return;
+    
+    setLoadingSaved(true);
+    const token = localStorage.getItem("token") || "";
+    
+    try {
+      const response = await axios.get(`${API}/saved-items/${storedUser.user_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      
+      if (Array.isArray(response.data)) {
+        setSavedItems(response.data);
+        const ids = new Set(response.data.map((item: SavedItem) => item.item_id));
+        setSavedItemIds(ids);
+      }
+    } catch (error) {
+      console.error("Failed to fetch saved items:", error);
+    } finally {
+      setLoadingSaved(false);
+    }
+  };
+
+  const handleSaveItem = async (itemId: number) => {
+    if (!storedUser?.user_id) {
+      alert("Please login to save items");
+      return;
+    }
+
+    setSavingId(itemId);
+    const token = localStorage.getItem("token") || "";
+
+    try {
+      await axios.post(
+        `${API}/saved-items`,
+        {
+          user_id: storedUser.user_id,
+          item_id: itemId,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      await fetchSavedItems();
+      alert("Item saved successfully!");
+    } catch (error: any) {
+      console.error("Failed to save item:", error);
+      if (error.response?.status === 409) {
+        alert("Item already saved!");
+      } else {
+        alert("Failed to save item");
+      }
+    } finally {
+      setSavingId(null);
+    }
+  };
+
+  const handleUnsaveItem = async (itemId: number) => {
+    setSavingId(itemId);
+    const token = localStorage.getItem("token") || "";
+
+    try {
+      await axios.delete(`${API}/saved-items/${itemId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      await fetchSavedItems();
+      alert("Item removed from saved!");
+    } catch (error) {
+      console.error("Failed to unsave item:", error);
+      alert("Failed to remove saved item");
+    } finally {
+      setSavingId(null);
     }
   };
 
@@ -327,6 +436,69 @@ export default function ReceiverDashboard(): JSX.Element {
     );
   };
 
+  // Render Saved Items content
+  const renderSavedItems = () => {
+    if (loadingSaved) {
+      return (
+        <div className="rd-loading-state">
+          <p>Loading saved items...</p>
+        </div>
+      );
+    }
+
+    if (savedItems.length === 0) {
+      return (
+        <div className="rd-empty-saved">
+          <div className="rd-empty-icon">📌</div>
+          <h3>No saved items</h3>
+          <p>Save items you're interested in by clicking the bookmark icon on any donation.</p>
+          <Link to="/explore" className="rd-browse-btn">Browse Donations</Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rd-saved-grid">
+        {savedItems.map((item) => {
+          const deliveryAvailable = String(item.delivery_available) === "1" || String(item.delivery_available).toLowerCase() === "true";
+          
+          return (
+            <div key={item.saved_id} className="rd-saved-card">
+              <div className="rd-saved-image">
+                {item.images ? (
+                  <img src={item.images} alt={item.title} />
+                ) : (
+                  <div className="rd-saved-image-placeholder">📦</div>
+                )}
+              </div>
+              <div className="rd-saved-content">
+                <h3 className="rd-saved-title">{item.title}</h3>
+                <p className="rd-saved-description">{item.description}</p>
+                <div className="rd-saved-details">
+                  <div className="rd-saved-location">📍 {item.pickup_location}</div>
+                  <div className="rd-saved-donor">👤 Donor: {item.donor_name}</div>
+                  <div className="rd-saved-date">📅 Saved: {new Date(item.saved_at).toLocaleDateString()}</div>
+                </div>
+                <div className="rd-saved-footer">
+                  <div className="rd-saved-note">
+                    {deliveryAvailable ? "🚚 Delivery Available" : "🏠 Pickup Only"}
+                  </div>
+                  <button 
+                    className="rd-unsave-btn"
+                    onClick={() => handleUnsaveItem(item.item_id)}
+                    disabled={savingId === item.item_id}
+                  >
+                    {savingId === item.item_id ? "Removing..." : "❤️ Saved"}
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div className="rd">
       <aside className="rd-sidebar">
@@ -425,7 +597,7 @@ export default function ReceiverDashboard(): JSX.Element {
             </Link>
           </div>
           <div className="rd-topRight">
-            {activeMenu !== "requests" && (
+            {activeMenu !== "requests" && activeTab !== "saved" && (
               <>
                 <div className="rd-search">
                   <span className="rd-searchIco">🔎</span>
@@ -512,7 +684,7 @@ export default function ReceiverDashboard(): JSX.Element {
                 Browse real approved donations from{" "}
                 <span className="rd-accent">warmConnect</span>.
               </p>
-              {searchTerm && (
+              {searchTerm && activeTab !== "saved" && (
                 <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
                   Showing {filteredItems.length} of {items.length} total items matching "{searchTerm}" in {searchType}
                 </p>
@@ -562,6 +734,9 @@ export default function ReceiverDashboard(): JSX.Element {
                   onClick={() => setActiveTab("saved")}
                 >
                   Saved Items
+                  {savedItems.length > 0 && (
+                    <span className="rd-tab-count">{savedItems.length}</span>
+                  )}
                 </button>
                 <button
                   className={`rd-tab ${activeTab === "community" ? "isActive" : ""}`}
@@ -595,7 +770,15 @@ export default function ReceiverDashboard(): JSX.Element {
                 ) : activeTab === "matched" ? (
                   filteredItems.length > 0 ? (
                     filteredItems.map((item) => (
-                      <RequestCard key={item.item_id} item={item} />
+                      <RequestCard 
+                        key={item.item_id} 
+                        item={item}
+                        isSaved={savedItemIds.has(item.item_id!)}
+                        isSaving={savingId === item.item_id}
+                        onSave={() => handleSaveItem(item.item_id!)}
+                        onUnsave={() => handleUnsaveItem(item.item_id!)}
+                        showSaveButton={true}
+                      />
                     ))
                   ) : (
                     <EmptyState
@@ -604,12 +787,14 @@ export default function ReceiverDashboard(): JSX.Element {
                     />
                   )
                 ) : activeTab === "saved" ? (
-                  <EmptyState
-                    title="No saved items endpoint available"
-                    text="This section remains empty until a real saved items backend feature is added."
-                  />
+                  renderSavedItems()
                 ) : activeTab === "messages" ? (
                   <ChatPanel currentUser={user} apiBase={API} />
+                ) : activeTab === "community" ? (
+                  <EmptyState
+                    title="Community Hub"
+                    text="Click the 'Community' tab above to visit the Community page!"
+                  />
                 ) : (
                   <EmptyState
                     title="No community endpoint available"
@@ -681,7 +866,7 @@ function StatCard({ label, value, sub, icon }: StatCardProps): JSX.Element {
   );
 }
 
-function RequestCard({ item }: RequestCardProps): JSX.Element {
+function RequestCard({ item, isSaved, isSaving, onSave, onUnsave, showSaveButton }: RequestCardProps): JSX.Element {
   const title = item.title || "Untitled Item";
   const desc = item.description || "No description provided.";
   const image = item.images || "https://via.placeholder.com/600x400?text=No+Image";
@@ -691,11 +876,18 @@ function RequestCard({ item }: RequestCardProps): JSX.Element {
     String(item.delivery_available) === "1" ||
     String(item.delivery_available).toLowerCase() === "true";
 
+  const getStatus = () => {
+    if ('status' in item && item.status) {
+      return String(item.status).toUpperCase();
+    }
+    return "APPROVED";
+  };
+
   return (
     <div className="rd-listCard">
       <div className="rd-listMedia">
         <img src={image} alt={title} />
-        <div className="rd-chip">{String(item.status || "approved").toUpperCase()}</div>
+        <div className="rd-chip">{getStatus()}</div>
       </div>
 
       <div className="rd-listBody">
@@ -719,6 +911,15 @@ function RequestCard({ item }: RequestCardProps): JSX.Element {
             <Link to="/explore" className="rd-ctaBtn">
               View More
             </Link>
+            {showSaveButton && (
+              <button
+                className={`rd-save-btn ${isSaved ? 'saved' : ''}`}
+                onClick={() => isSaved ? onUnsave?.() : onSave?.()}
+                disabled={isSaving}
+              >
+                {isSaving ? "Saving..." : (isSaved ? '❤️ Saved' : '🤍 Save')}
+              </button>
+            )}
           </div>
         </div>
       </div>

@@ -9,6 +9,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ChatController;
 use App\Http\Controllers\StoryController;
 use App\Http\Controllers\CommunityController;
+use App\Http\Controllers\SavedItemController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
@@ -39,9 +40,6 @@ Route::post('/community/thank-you', [CommunityController::class, 'addThankYou'])
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
-    // Add these inside the auth:sanctum middleware group
-Route::get('/receiver/requests/{userId}', [DonationController::class, 'getReceiverRequests']);
-Route::delete('/receiver/requests/{donationId}', [DonationController::class, 'cancelRequest']);
     Route::get('/me', [AuthenticatedSessionController::class, 'me']);
 
     // Item routes
@@ -51,6 +49,15 @@ Route::delete('/receiver/requests/{donationId}', [DonationController::class, 'ca
 
     Route::get('/user/donations/{userId}', [ItemController::class, 'getUserDonations']);
     Route::get('/donor/impact/{donorId}', [ItemController::class, 'getDonorImpact']);
+
+    // Saved Items routes
+    Route::get('/saved-items/{userId}', [SavedItemController::class, 'index']);
+    Route::post('/saved-items', [SavedItemController::class, 'store']);
+    Route::delete('/saved-items/{itemId}', [SavedItemController::class, 'destroy']);
+
+    // Receiver request routes
+    Route::get('/receiver/requests/{userId}', [DonationController::class, 'getReceiverRequests']);
+    Route::delete('/receiver/requests/{donationId}', [DonationController::class, 'cancelRequest']);
 
     // Admin routes for items
     Route::get('/admin/items/pending', [ItemController::class, 'getPendingItems']);
