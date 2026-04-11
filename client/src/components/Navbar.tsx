@@ -123,16 +123,12 @@ export default function Navbar(): JSX.Element {
     };
 
     void checkSession();
-    const interval = window.setInterval(() => {
-      void checkSession();
-    }, 2000);
 
     window.addEventListener("focus", onFocus);
     window.addEventListener("storage", onStorage);
 
     return () => {
       cancelled = true;
-      window.clearInterval(interval);
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("storage", onStorage);
     };
