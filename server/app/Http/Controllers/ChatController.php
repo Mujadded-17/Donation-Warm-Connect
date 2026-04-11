@@ -9,6 +9,21 @@ use Illuminate\Database\Schema\Blueprint;
 
 class ChatController extends Controller
 {
+    private function isAdminUserId(int $userId): bool
+    {
+        $user = DB::table('user')
+            ->where('user_id', $userId)
+            ->select(['user_type', 'email'])
+            ->first();
+
+        if (!$user) {
+            return false;
+        }
+
+        return strtolower((string) $user->user_type) === 'admin'
+            || strtolower((string) $user->email) === 'silviaadmin@gmail.com';
+    }
+
     private function ensureChatMessageTable(): void
     {
         if (Schema::hasTable('chat_message')) {
@@ -223,6 +238,10 @@ class ChatController extends Controller
 
     private function canUsersChat(int $firstUserId, int $secondUserId): bool
     {
+        if ($this->isAdminUserId($firstUserId) || $this->isAdminUserId($secondUserId)) {
+            return true;
+        }
+
         return DB::table('donation')
             ->where(function ($q) use ($firstUserId, $secondUserId) {
                 $q->where('donor_id', $firstUserId)

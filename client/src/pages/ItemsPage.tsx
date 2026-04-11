@@ -33,8 +33,26 @@ type NormalizedItem = Item & {
   categoryName: string;
 };
 
+const getStoredUser = (): User | null => {
+  const rawUser = localStorage.getItem("user");
+
+  if (!rawUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawUser) as User;
+  } catch {
+    return null;
+  }
+};
+
 function ItemsPage() {
   const navigate = useNavigate();
+  const currentUser = getStoredUser();
+  const isAdminUser =
+    String(currentUser?.user_type || "").toLowerCase() === "admin" ||
+    String(currentUser?.email || "").toLowerCase() === "silviaadmin@gmail.com";
 
   const [items, setItems] = useState<Item[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
@@ -149,6 +167,10 @@ function ItemsPage() {
 
     return result;
   }, [normalizedItems, activeCategory, search, verifiedOnly]);
+
+  const exploreSubtitle = isAdminUser
+    ? "Browse community donations and review what's available without request actions."
+    : "Browse useful community donations and request what you need.";
 
   const handleRequestItem = async (item: Item) => {
     const rawUser = localStorage.getItem("user");
@@ -313,7 +335,7 @@ function ItemsPage() {
             <div>
               <h1 className="explore-heading">Donations Near You</h1>
               <p className="explore-subtext">
-                Browse useful community donations and request what you need.
+                {exploreSubtitle}
               </p>
             </div>
 
@@ -382,13 +404,17 @@ function ItemsPage() {
                         </div>
                       </div>
 
-                      <button
-                        className="card-btn"
-                        onClick={() => handleRequestItem(item)}
-                        disabled={requestingId === item.item_id}
-                      >
-                        {requestingId === item.item_id ? "..." : "Request"}
-                      </button>
+                      {!isAdminUser ? (
+                        <button
+                          className="card-btn"
+                          onClick={() => handleRequestItem(item)}
+                          disabled={requestingId === item.item_id}
+                        >
+                          {requestingId === item.item_id ? "..." : "Request"}
+                        </button>
+                      ) : (
+                        <div className="card-admin-note">Admin view only</div>
+                      )}
                     </div>
                   </div>
                 </article>
