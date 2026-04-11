@@ -1,40 +1,20 @@
+@import url('https://fonts.googleapis.com/css2?family=Figtree:wght@300;400;500;600;700;800&display=swap');
+
 :root {
-  font-family: 'Josefin Sans', serif;
+  font-family: 'Figtree', sans-serif;
   line-height: 1.5;
   font-weight: 400;
 }
+
+html,
+body,
+#root,
+* {
+  font-family: 'Figtree', sans-serif;
+}
+
 body {
-  font-family: 'Josefin Sans', serif;
-}
-
-.layout {
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-}
-
-header {
-  padding: 1em;
-}
-
-main {
-  flex: 1;
-  padding: 1em;
-}
-footer {
-  padding: 1em;
-  text-align: center;
-}
-
-@media (min-width: 576px) {
-  .w-lg-400 {
-    width: 400px;
-  }
-}
-
-@media (min-width: 576px) {
-  .navbar-mx {
-    padding-left: 300px;
-    padding-right: 300px;
-  }
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

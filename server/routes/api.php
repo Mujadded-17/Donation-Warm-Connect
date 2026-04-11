@@ -12,6 +12,7 @@ use App\Http\Controllers\CommunityController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
 
+
 // Public routes
 Route::get('/items', [ItemController::class, 'index']);
 Route::get('/items/{itemId}/availability', [ItemController::class, 'checkAvailability']);
@@ -38,6 +39,9 @@ Route::post('/community/thank-you', [CommunityController::class, 'addThankYou'])
 // Protected routes
 Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
+    // Add these inside the auth:sanctum middleware group
+Route::get('/receiver/requests/{userId}', [DonationController::class, 'getReceiverRequests']);
+Route::delete('/receiver/requests/{donationId}', [DonationController::class, 'cancelRequest']);
     Route::get('/me', [AuthenticatedSessionController::class, 'me']);
 
     // Item routes
