@@ -1,9 +1,8 @@
 import { useState } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
+import { API_URL } from "../config";
 import "../styles/Login.css";
-
-const API = "http://127.0.0.1:8000/api";
 
 type RegisterForm = {
   name: string;
@@ -16,8 +15,6 @@ type RegisterForm = {
 };
 
 export default function Register() {
-  const nav = useNavigate();
-
   const [form, setForm] = useState<RegisterForm>({
     name: "",
     email: "",
@@ -30,6 +27,8 @@ export default function Register() {
 
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [registeredEmail, setRegisteredEmail] = useState("");
+  const [resending, setResending] = useState(false);
 
   const onChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -40,13 +39,48 @@ export default function Register() {
     }));
   };
 
+  const resendVerification = async () => {
+    if (!registeredEmail) return;
+
+    setResending(true);
+    setError("");
+    setMsg("");
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/email/verification-notification`,
+        { email: registeredEmail },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      setMsg(res.data?.message || "Verification email sent again.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const backendMessage = (
+          err.response?.data as { message?: string } | undefined
+        )?.message;
+
+        setError(backendMessage || "Failed to resend verification email.");
+      } else {
+        setError("Failed to resend verification email.");
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     setMsg("");
     setError("");
 
     try {
-      const res = await axios.post(`${API}/register`, form, {
+      const res = await axios.post(`${API_URL}/register`, form, {
         headers: {
           "Content-Type": "application/json",
           Accept: "application/json",
@@ -54,13 +88,21 @@ export default function Register() {
       });
 
       if (res.data?.success) {
-        localStorage.setItem("user", JSON.stringify(res.data.user));
-        localStorage.setItem("token", res.data.token);
-
+        localStorage.removeItem("user");
+        localStorage.removeItem("token");
         window.dispatchEvent(new Event("auth-changed"));
 
-        setMsg("✅ Registered successfully!");
-        setTimeout(() => nav("/dashboard"), 800);
+        setRegisteredEmail(form.email);
+        setMsg(
+          res.data?.message ||
+            "Registration successful. Please check your email and verify your account before logging in."
+        );
+
+        setForm((prev) => ({
+          ...prev,
+          password: "",
+          password_confirmation: "",
+        }));
       } else {
         setError(res.data?.message || "Registration failed");
       }
@@ -69,14 +111,22 @@ export default function Register() {
 
       if (axios.isAxiosError(err)) {
         const status = err.response?.status;
-        const backendMessage = (err.response?.data as { message?: string } | undefined)?.message;
+        const backendMessage = (
+          err.response?.data as { message?: string } | undefined
+        )?.message;
 
         if (backendMessage) {
           setError(backendMessage);
         } else if (!err.response) {
-          setError("Cannot reach backend server. Ensure API is running and CORS allows your frontend port.");
+          setError(
+            "Cannot reach backend server. Ensure API is running and CORS allows your frontend port."
+          );
         } else if (status === 422) {
-          setError("Invalid registration input. Please check your data and try again.");
+          setError(
+            "Invalid registration input. Please check your data and try again."
+          );
+        } else if (status === 429) {
+          setError("Too many requests. Please wait a minute and try again.");
         } else {
           setError(`Registration failed (HTTP ${status}).`);
         }
@@ -92,9 +142,11 @@ export default function Register() {
     <div className="auth-container">
       <div className="auth-shell">
         <div className="auth-panel auth-panel-left">
-          <h2 className="auth-hero-title">
-            Join the WarmConnect Community
-          </h2>
+          <h2 className="auth-hero-title">Join the WarmConnect Community</h2>
+          <p className="auth-hero-sub">
+            Create your account and verify your email to start donating or
+            receiving support safely.
+          </p>
         </div>
 
         <div className="auth-panel auth-panel-right">
@@ -165,6 +217,24 @@ export default function Register() {
                 Register
               </button>
             </form>
+
+            {registeredEmail && (
+              <div className="verification-box">
+                <p className="verification-text">
+                  Didn&apos;t get the email? Send the verification link again for{" "}
+                  <strong>{registeredEmail}</strong>.
+                </p>
+
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={resendVerification}
+                  disabled={resending}
+                >
+                  {resending ? "Sending..." : "Resend Verification Email"}
+                </button>
+              </div>
+            )}
 
             <p>
               Already registered? <Link to="/login">Login</Link>
