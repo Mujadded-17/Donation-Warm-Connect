@@ -80,7 +80,7 @@ Route::middleware(['auth:sanctum', 'check.banned'])->group(function () {
     Route::post('/donations/request', [DonationController::class, 'requestItem']);
     Route::get('/donations/incoming/{donorId}', [DonationController::class, 'getIncomingRequests']);
     Route::put('/donations/{donationId}/decision', [DonationController::class, 'decideRequest']);
-
+Route::put('/donations/{donationId}/complete', [DonationController::class, 'markAsCompleted'])->middleware('auth:sanctum');
     // Notification routes
     Route::get('/notifications/{userId}', [NotificationController::class, 'getUserNotifications']);
 
