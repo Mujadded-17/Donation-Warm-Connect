@@ -28,7 +28,7 @@ export default function ProfilePage() {
   const rawUser = localStorage.getItem("user");
   const storedUser: User | null = rawUser ? JSON.parse(rawUser) : null;
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const [msg, setMsg] = useState("");
@@ -36,11 +36,11 @@ export default function ProfilePage() {
 
   const [user, setUser] = useState<User | null>(storedUser);
   const [form, setForm] = useState<ProfileForm>({
-    name: "",
-    email: "",
-    phone: "",
-    address: "",
-    profile_url: "",
+    name: storedUser?.name || "",
+    email: storedUser?.email || "",
+    phone: storedUser?.phone || "",
+    address: storedUser?.address || "",
+    profile_url: storedUser?.profile_url || "",
   });
 
   useEffect(() => {
@@ -136,11 +136,6 @@ export default function ProfilePage() {
 
         localStorage.setItem("user", JSON.stringify(updatedUser));
         setMsg("Profile updated successfully.");
-        
-        // Optional: Refresh the page data after 1 second
-        setTimeout(() => {
-          fetchProfile(user.user_id);
-        }, 1000);
       } else {
         setError(res.data?.message || "Profile update failed.");
       }
@@ -179,16 +174,6 @@ export default function ProfilePage() {
       .map((part) => part[0]?.toUpperCase())
       .join("");
   }, [user]);
-
-  if (loading) {
-    return (
-      <div className="profile-page">
-        <div className="profile-card">
-          <p className="profile-status">Loading profile...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="profile-page">
