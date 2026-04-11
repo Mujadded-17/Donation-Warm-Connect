@@ -71,7 +71,23 @@ export default function AdminUserManagement({ currentUser, apiBase }: AdminUserM
     return users.find((user) => user.user_id === selectedUserId) || null;
   }, [selectedUserId, users]);
 
-  const loadUsers = async (query: string) => {
+  const filteredUsers = useMemo(() => {
+    const term = searchQuery.trim().toLowerCase();
+
+    if (!term) {
+      return users;
+    }
+
+    return users.filter((user) => {
+      return (
+        String(user.name || "").toLowerCase().includes(term) ||
+        String(user.email || "").toLowerCase().includes(term) ||
+        String(user.user_type || "").toLowerCase().includes(term)
+      );
+    });
+  }, [searchQuery, users]);
+
+  const loadUsers = async () => {
     if (!isAdmin || !currentUser?.user_id) {
       return;
     }
@@ -80,7 +96,6 @@ export default function AdminUserManagement({ currentUser, apiBase }: AdminUserM
       setLoadingUsers(true);
       const response = await axios.get(`${apiBase}/admin/users/search`, {
         headers: authHeaders,
-        params: { query },
       });
 
       const payload = response.data?.users;
@@ -124,8 +139,9 @@ export default function AdminUserManagement({ currentUser, apiBase }: AdminUserM
       setChatError("");
     } catch (fetchError) {
       console.error("Failed to load admin conversation:", fetchError);
-      setMessages([]);
-      setChatError("Failed to load messages.");
+      if (!silent) {
+        setChatError("Failed to load messages.");
+      }
     } finally {
       if (!silent) {
         setLoadingMessages(false);
@@ -138,12 +154,8 @@ export default function AdminUserManagement({ currentUser, apiBase }: AdminUserM
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      void loadUsers(searchQuery.trim());
-    }, 250);
-
-    return () => window.clearTimeout(timer);
-  }, [searchQuery, isAdmin, currentUser?.user_id]);
+    void loadUsers();
+  }, [isAdmin, currentUser?.user_id]);
 
   useEffect(() => {
     if (!selectedUserId) {
@@ -272,10 +284,10 @@ export default function AdminUserManagement({ currentUser, apiBase }: AdminUserM
           <div className="cp-muted">Searching users...</div>
         ) : error ? (
           <div className="cp-error">{error}</div>
-        ) : users.length === 0 ? (
+        ) : filteredUsers.length === 0 ? (
           <div className="cp-muted">No users found.</div>
         ) : (
-          users.map((user) => {
+          filteredUsers.map((user) => {
             const isSelected = selectedUserId === user.user_id;
             const isBanned = Boolean(user.is_banned);
 
@@ -411,15 +423,33 @@ function formatMessageTime(value: string): string {
     return "";
   }
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
+  const date = parseChatDate(value);
+  if (!date) {
     return value;
   }
 
-  return date.toLocaleString([], {
-    month: "short",
-    day: "numeric",
+  return date.toLocaleTimeString([], {
     hour: "numeric",
     minute: "2-digit",
+    hour12: true,
   });
+}
+
+function parseChatDate(value: string): Date | null {
+  const raw = value.trim();
+  if (!raw) {
+    return null;
+  }
+
+  const normalized = raw.replace(" ", "T");
+  const hasTimezone = /[zZ]$|[+-]\d{2}:\d{2}$/.test(normalized);
+  const utcCandidate = hasTimezone ? normalized : `${normalized.replace(/\.\d+$/, "")}Z`;
+
+  const parsed = new Date(utcCandidate);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed;
+  }
+
+  const fallback = new Date(raw);
+  return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
