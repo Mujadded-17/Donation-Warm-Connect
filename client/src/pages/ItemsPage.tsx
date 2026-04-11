@@ -14,6 +14,7 @@ type Item = {
   donor_id: number;
   images?: string;
   donor_verified?: boolean | number | string;
+  donor_name?: string;
 };
 
 type Category = {
@@ -389,12 +390,12 @@ function ItemsPage() {
                     <div className="card-footer">
                       <div className="card-donor">
                         <div className="card-avatar">
-                          {(item.title?.charAt(0) || "D").toUpperCase()}
+                          {(item.donor_name?.charAt(0) || "D").toUpperCase()}
                         </div>
 
                         <div className="card-donor-text">
                           <span className="card-donor-name">
-                            Community Donor
+                            {item.donor_name?.trim() || "Community Donor"}
                           </span>
                           <span className="card-donor-status">
                             {item.status === "approved"

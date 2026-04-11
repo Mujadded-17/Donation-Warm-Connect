@@ -11,13 +11,15 @@ class ItemController extends Controller
     {
         // Only show approved items that don't have an approved donation request
         $items = DB::table('item')
-            ->where('status', 'approved')
+            ->join('user as u', 'u.user_id', '=', 'item.donor_id')
+            ->where('item.status', 'approved')
             ->whereNotExists(function ($query) {
                 $query->select(DB::raw(1))
                     ->from('donation')
                     ->whereColumn('donation.item_id', 'item.item_id')
                     ->where('donation.status', 'approved');
             })
+            ->select('item.*', 'u.name as donor_name')
             ->orderBy('post_date', 'desc')
             ->get();
         
