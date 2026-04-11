@@ -129,7 +129,7 @@ class CommunityController extends Controller
         ]);
     }
     
-    // Get gratitude wall messages (NO ADMIN APPROVAL NEEDED - shows all)
+    // Get gratitude wall messages - SHOWS ALL MESSAGES (for donors to see)
     public function getGratitudeWall()
     {
         $thankYous = DB::table('gratitude_wall as g')
@@ -154,7 +154,7 @@ class CommunityController extends Controller
         ]);
     }
     
-    // Add thank you message to gratitude wall (NO ADMIN APPROVAL NEEDED)
+    // Add thank you message (receivers send to donors)
     public function addThankYou(Request $request)
     {
         $validated = $request->validate([
@@ -168,19 +168,8 @@ class CommunityController extends Controller
             'to_user_id' => $validated['to_user_id'] ?? null,
             'message' => $validated['message'],
             'item_title' => $validated['item_title'] ?? null,
-            'status' => 'approved', // Auto-approve, no admin needed
             'created_at' => now(),
         ]);
-        
-        // Send notification to the donor being thanked
-        if ($validated['to_user_id']) {
-            DB::table('notification')->insert([
-                'user_id' => $validated['to_user_id'],
-                'type' => 'thank_you_received',
-                'message' => $request->user()->name . ' thanked you for your donation' . ($validated['item_title'] ? ' of "' . $validated['item_title'] . '"' : ''),
-                'create_time' => now(),
-            ]);
-        }
         
         return response()->json([
             'success' => true,
