@@ -517,6 +517,9 @@
 
 .ad-user-shell {
   margin-top: 12px;
+  height: min(72vh, calc(100vh - 270px));
+  min-height: 560px;
+  align-items: stretch;
 }
 
 .ad-user-list {
@@ -639,6 +642,10 @@
 
 .ad-chatPanel {
   min-height: 620px;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
 }
 
 .ad-chatHead {
@@ -681,6 +688,23 @@
   place-items: center;
   min-height: 520px;
   background: #f7f8fa;
+}
+
+.ad-user-shell .cp-list,
+.ad-user-shell .cp-chat {
+  min-height: 0;
+}
+
+.ad-user-shell .cp-messages {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ad-user-shell .cp-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -8px 24px rgba(20, 32, 51, 0.08);
 }
 
 .ad-approveBtn,
