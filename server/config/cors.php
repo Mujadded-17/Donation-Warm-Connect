@@ -19,12 +19,13 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => [
+    'allowed_origins' => array_filter([
+    env('https://donation-warm-connect-h195.vercel.app/'),
     'http://localhost:5173',
     'http://localhost:5174',
     'http://127.0.0.1:5173',
     'http://127.0.0.1:5174',
-    ],
+]),
 
     'allowed_origins_patterns' => [
         '/^http:\/\/localhost:\d+$/',
