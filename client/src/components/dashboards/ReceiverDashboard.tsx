@@ -46,6 +46,19 @@ type SavedItem = {
   saved_at: string;
 };
 
+type RequestedItem = {
+  donation_id: number;
+  item_id: number;
+  title: string;
+  description: string;
+  images: string;
+  pickup_location: string;
+  donor_name: string;
+  donor_id: number;
+  request_date: string;
+  donation_status: string;
+};
+
 type StatCardProps = {
   label: string;
   value: string;
@@ -85,9 +98,11 @@ export default function ReceiverDashboard(): JSX.Element {
   const [filteredItems, setFilteredItems] = useState<Item[]>([]);
   const [savedItems, setSavedItems] = useState<SavedItem[]>([]);
   const [savedItemIds, setSavedItemIds] = useState<Set<number>>(new Set());
+  const [requestedItems, setRequestedItems] = useState<RequestedItem[]>([]);
   const [activeMenu, setActiveMenu] = useState<MenuKey>("dashboard");
   const [activeTab, setActiveTab] = useState<TabKey>("matched");
   const [loadingSaved, setLoadingSaved] = useState(false);
+  const [loadingRequests, setLoadingRequests] = useState(false);
   const [savingId, setSavingId] = useState<number | null>(null);
   
   // Search state
@@ -159,9 +174,10 @@ export default function ReceiverDashboard(): JSX.Element {
         setLoadingItems(false);
       }
 
-      // Fetch saved items
+      // Fetch saved items and requested items
       if (storedUser?.user_id) {
         await fetchSavedItems();
+        await fetchRequestedItems();
       }
     };
 
@@ -198,6 +214,32 @@ export default function ReceiverDashboard(): JSX.Element {
       console.error("Failed to fetch saved items:", error);
     } finally {
       setLoadingSaved(false);
+    }
+  };
+
+  const fetchRequestedItems = async () => {
+    if (!storedUser?.user_id) return;
+    
+    setLoadingRequests(true);
+    const token = localStorage.getItem("token") || "";
+    
+    try {
+      const response = await axios.get(`${API}/receiver/requests/${storedUser.user_id}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: "application/json",
+        },
+      });
+      
+      console.log("Requested items response:", response.data);
+      
+      if (response.data?.success && Array.isArray(response.data.requests)) {
+        setRequestedItems(response.data.requests);
+      }
+    } catch (error) {
+      console.error("Failed to fetch requested items:", error);
+    } finally {
+      setLoadingRequests(false);
     }
   };
 
@@ -257,6 +299,26 @@ export default function ReceiverDashboard(): JSX.Element {
       alert("Failed to remove saved item");
     } finally {
       setSavingId(null);
+    }
+  };
+
+  const cancelRequest = async (donationId: number) => {
+    if (!confirm("Are you sure you want to cancel this request?")) return;
+    
+    const token = localStorage.getItem("token") || "";
+    
+    try {
+      await axios.delete(`${API}/receiver/requests/${donationId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      alert("Request cancelled successfully!");
+      await fetchRequestedItems();
+    } catch (error) {
+      console.error("Failed to cancel request:", error);
+      alert("Failed to cancel request");
     }
   };
 
@@ -347,7 +409,6 @@ export default function ReceiverDashboard(): JSX.Element {
       .join("");
   }, [displayName]);
 
-  // Stats based on ALL items
   const allItemsStats = useMemo(() => {
     const totalApproved = items.length;
     const deliveryAvailable = items.filter(
@@ -369,6 +430,88 @@ export default function ReceiverDashboard(): JSX.Element {
 
   const clearSearch = () => {
     setSearchTerm("");
+  };
+
+  const getStatusBadgeClass = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return 'status-approved';
+      case 'rejected':
+        return 'status-rejected';
+      default:
+        return 'status-pending';
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status.toLowerCase()) {
+      case 'approved':
+        return '✓ Approved';
+      case 'rejected':
+        return '✗ Rejected';
+      default:
+        return '⏳ Pending';
+    }
+  };
+
+  // Render My Requests content
+  const renderMyRequests = () => {
+    if (loadingRequests) {
+      return (
+        <div className="rd-loading-state">
+          <p>Loading your requests...</p>
+        </div>
+      );
+    }
+
+    if (requestedItems.length === 0) {
+      return (
+        <div className="rd-empty-requests">
+          <div className="rd-empty-icon">📭</div>
+          <h3>No requests yet</h3>
+          <p>You haven't requested any items yet. Browse available donations and make your first request!</p>
+          <Link to="/explore" className="rd-browse-btn">Browse Donations</Link>
+        </div>
+      );
+    }
+
+    return (
+      <div className="rd-requests-grid">
+        {requestedItems.map((request) => (
+          <div key={request.donation_id} className="rd-request-card">
+            <div className="rd-request-image">
+              {request.images ? (
+                <img src={request.images} alt={request.title} />
+              ) : (
+                <div className="rd-request-image-placeholder">📦</div>
+              )}
+            </div>
+            <div className="rd-request-content">
+              <h3 className="rd-request-title">{request.title}</h3>
+              <p className="rd-request-description">{request.description}</p>
+              <div className="rd-request-details">
+                <div className="rd-request-location">📍 {request.pickup_location}</div>
+                <div className="rd-request-donor">👤 Donor: {request.donor_name}</div>
+                <div className="rd-request-date">📅 Requested: {new Date(request.request_date).toLocaleDateString()}</div>
+              </div>
+              <div className="rd-request-status">
+                <span className={`rd-status-badge ${getStatusBadgeClass(request.donation_status)}`}>
+                  {getStatusText(request.donation_status)}
+                </span>
+                {request.donation_status === "requested" && (
+                  <button 
+                    className="rd-cancel-btn"
+                    onClick={() => cancelRequest(request.donation_id)}
+                  >
+                    Cancel Request
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   // Render Saved Items content
@@ -486,6 +629,9 @@ export default function ReceiverDashboard(): JSX.Element {
           >
             <span className="rd-ico">♡</span>
             My Requests
+            {requestedItems.length > 0 && (
+              <span className="rd-nav-badge">{requestedItems.length}</span>
+            )}
           </button>
 
           <button
@@ -529,7 +675,7 @@ export default function ReceiverDashboard(): JSX.Element {
             </Link>
           </div>
           <div className="rd-topRight">
-            {activeTab !== "saved" && activeTab !== "community" && (
+            {activeMenu !== "requests" && activeTab !== "saved" && activeTab !== "community" && (
               <>
                 <div className="rd-search">
                   <span className="rd-searchIco">🔎</span>
@@ -594,217 +740,232 @@ export default function ReceiverDashboard(): JSX.Element {
           </div>
         </header>
 
-        <section className="rd-greet">
-          <h1>
-            Welcome <span className="rd-nameAccent">{displayName}!</span>
-          </h1>
-          <p>
-            Browse real approved donations from{" "}
-            <span className="rd-accent">warmConnect</span>.
-          </p>
-          {searchTerm && activeTab !== "saved" && activeTab !== "community" && (
-            <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
-              Showing {filteredItems.length} of {items.length} total items matching "{searchTerm}" in {searchType}
-            </p>
-          )}
-        </section>
-
-        {(profileError || itemError) && (
-          <div className="rd-empty" style={{ marginBottom: "16px" }}>
-            <div className="rd-emptyTitle">Some data could not be loaded</div>
-            <div className="rd-emptyText">
-              {[profileError, itemError].filter(Boolean).join(" ")}
-            </div>
-          </div>
-        )}
-
-        <section className="rd-stats">
-          <StatCard
-            label="AVAILABLE ITEMS"
-            value={`${allItemsStats.totalApproved}`}
-            sub="Total items in community"
-            icon="🎁"
-          />
-          <StatCard
-            label="DELIVERY AVAILABLE"
-            value={`${allItemsStats.deliveryAvailable}`}
-            sub="Items offering delivery"
-            icon="🚚"
-          />
-          <StatCard
-            label="PICKUP ITEMS"
-            value={`${allItemsStats.pickupOnly}`}
-            sub="Items requiring pickup"
-            icon="📍"
-          />
-        </section>
-
-        <section className="rd-panel">
-          <div className="rd-tabs">
-            <button
-              className={`rd-tab ${activeTab === "matched" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("matched")}
-            >
-              Available Offers
-            </button>
-            <button
-              className={`rd-tab ${activeTab === "saved" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("saved")}
-            >
-              Saved Items
-              {savedItems.length > 0 && (
-                <span className="rd-tab-count">{savedItems.length}</span>
+        {activeMenu === "requests" ? (
+          <>
+            <section className="rd-greet">
+              <h1>
+                My Requests <span className="rd-nameAccent">❤️</span>
+              </h1>
+              <p>Track the status of items you've requested from donors</p>
+            </section>
+            <section className="rd-requests-container">
+              {renderMyRequests()}
+            </section>
+          </>
+        ) : (
+          <>
+            <section className="rd-greet">
+              <h1>
+                Welcome <span className="rd-nameAccent">{displayName}!</span>
+              </h1>
+              <p>
+                Browse real approved donations from{" "}
+                <span className="rd-accent">warmConnect</span>.
+              </p>
+              {searchTerm && activeTab !== "saved" && activeTab !== "community" && (
+                <p style={{ marginTop: '10px', color: '#666', fontSize: '14px' }}>
+                  Showing {filteredItems.length} of {items.length} total items matching "{searchTerm}" in {searchType}
+                </p>
               )}
-            </button>
-            <button
-              className={`rd-tab ${activeTab === "community" ? "isActive" : ""}`}
-              onClick={() => setActiveTab("community")}
-            >
-              Community
-            </button>
-            <button
-              className={`rd-tab ${activeTab === "messages" ? "isActive" : ""}`}
-              onClick={() => {
-                setActiveTab("messages");
-                setActiveMenu("messages");
-              }}
-            >
-              Messages
-            </button>
+            </section>
 
-            <div className="rd-tabsRight">
-              <button className="rd-sortBtn">
-                <span className="rd-sortIco">≡</span> Approved items
-              </button>
-            </div>
-          </div>
+            {(profileError || itemError) && (
+              <div className="rd-empty" style={{ marginBottom: "16px" }}>
+                <div className="rd-emptyTitle">Some data could not be loaded</div>
+                <div className="rd-emptyText">
+                  {[profileError, itemError].filter(Boolean).join(" ")}
+                </div>
+              </div>
+            )}
 
-          <div className="rd-listGrid">
-            {isLoading ? (
-              <EmptyState
-                title="Loading data..."
-                text="Please wait while your receiver dashboard is fetched."
+            <section className="rd-stats">
+              <StatCard
+                label="AVAILABLE ITEMS"
+                value={`${allItemsStats.totalApproved}`}
+                sub="Total items in community"
+                icon="🎁"
               />
-            ) : activeTab === "matched" ? (
-              filteredItems.length > 0 ? (
-                filteredItems.map((item) => (
-                  <RequestCard 
-                    key={item.item_id} 
-                    item={item}
-                    isSaved={savedItemIds.has(item.item_id!)}
-                    isSaving={savingId === item.item_id}
-                    onSave={() => handleSaveItem(item.item_id!)}
-                    onUnsave={() => handleUnsaveItem(item.item_id!)}
-                    showSaveButton={true}
+              <StatCard
+                label="DELIVERY AVAILABLE"
+                value={`${allItemsStats.deliveryAvailable}`}
+                sub="Items offering delivery"
+                icon="🚚"
+              />
+              <StatCard
+                label="PICKUP ITEMS"
+                value={`${allItemsStats.pickupOnly}`}
+                sub="Items requiring pickup"
+                icon="📍"
+              />
+            </section>
+
+            <section className="rd-panel">
+              <div className="rd-tabs">
+                <button
+                  className={`rd-tab ${activeTab === "matched" ? "isActive" : ""}`}
+                  onClick={() => setActiveTab("matched")}
+                >
+                  Available Offers
+                </button>
+                <button
+                  className={`rd-tab ${activeTab === "saved" ? "isActive" : ""}`}
+                  onClick={() => setActiveTab("saved")}
+                >
+                  Saved Items
+                  {savedItems.length > 0 && (
+                    <span className="rd-tab-count">{savedItems.length}</span>
+                  )}
+                </button>
+                <button
+                  className={`rd-tab ${activeTab === "community" ? "isActive" : ""}`}
+                  onClick={() => setActiveTab("community")}
+                >
+                  Community
+                </button>
+                <button
+                  className={`rd-tab ${activeTab === "messages" ? "isActive" : ""}`}
+                  onClick={() => {
+                    setActiveTab("messages");
+                    setActiveMenu("messages");
+                  }}
+                >
+                  Messages
+                </button>
+
+                <div className="rd-tabsRight">
+                  <button className="rd-sortBtn">
+                    <span className="rd-sortIco">≡</span> Approved items
+                  </button>
+                </div>
+              </div>
+
+              <div className="rd-listGrid">
+                {isLoading ? (
+                  <EmptyState
+                    title="Loading data..."
+                    text="Please wait while your receiver dashboard is fetched."
                   />
-                ))
-              ) : (
-                <EmptyState
-                  title={searchTerm ? "No matching items found" : "No approved items found"}
-                  text={searchTerm ? `No items match "${searchTerm}" in ${searchType}. Try a different search term.` : "There are currently no approved items available in the backend."}
-                />
-              )
-            ) : activeTab === "saved" ? (
-              renderSavedItems()
-            ) : activeTab === "community" ? (
-              loadingCommunity ? (
-                <EmptyState title="Loading community..." text="Please wait..." />
-              ) : (
-                <div className="community-container-inline">
-                  {/* Top Donors Section - Only this, no Gratitude Wall */}
-                  <div className="community-section">
-                    <h3>🏆 Top Donors</h3>
-                    <p className="community-subtitle">Thank the donors who help make our community strong!</p>
-                    <div className="top-donors-list">
-                      {topDonors.length === 0 ? (
-                        <p>No donors yet. Be the first to receive a donation!</p>
-                      ) : (
-                        topDonors.map((donor) => (
-                          <div key={donor.user_id} className="top-donor-item">
-                            <div className="donor-rank">#{donor.rank}</div>
-                            <div className="donor-avatar-small">
-                              {donor.profile_url ? (
-                                <img src={donor.profile_url} alt={donor.name} />
-                              ) : (
-                                <div className="avatar-placeholder-small">
-                                  {donor.name?.charAt(0).toUpperCase()}
+                ) : activeTab === "matched" ? (
+                  filteredItems.length > 0 ? (
+                    filteredItems.map((item) => (
+                      <RequestCard 
+                        key={item.item_id} 
+                        item={item}
+                        isSaved={savedItemIds.has(item.item_id!)}
+                        isSaving={savingId === item.item_id}
+                        onSave={() => handleSaveItem(item.item_id!)}
+                        onUnsave={() => handleUnsaveItem(item.item_id!)}
+                        showSaveButton={true}
+                      />
+                    ))
+                  ) : (
+                    <EmptyState
+                      title={searchTerm ? "No matching items found" : "No approved items found"}
+                      text={searchTerm ? `No items match "${searchTerm}" in ${searchType}. Try a different search term.` : "There are currently no approved items available in the backend."}
+                    />
+                  )
+                ) : activeTab === "saved" ? (
+                  renderSavedItems()
+                ) : activeTab === "community" ? (
+                  loadingCommunity ? (
+                    <EmptyState title="Loading community..." text="Please wait..." />
+                  ) : (
+                    <div className="community-container-inline">
+                      <div className="community-section">
+                        <h3>🏆 Top Donors</h3>
+                        <p className="community-subtitle">Thank the donors who help make our community strong!</p>
+                        <div className="top-donors-list">
+                          {topDonors.length === 0 ? (
+                            <p>No donors yet. Be the first to receive a donation!</p>
+                          ) : (
+                            topDonors.map((donor) => (
+                              <div key={donor.user_id} className="top-donor-item">
+                                <div className="donor-rank">#{donor.rank}</div>
+                                <div className="donor-avatar-small">
+                                  {donor.profile_url ? (
+                                    <img src={donor.profile_url} alt={donor.name} />
+                                  ) : (
+                                    <div className="avatar-placeholder-small">
+                                      {donor.name?.charAt(0).toUpperCase()}
+                                    </div>
+                                  )}
                                 </div>
-                              )}
-                            </div>
-                            <div className="donor-info-small">
-                              <div className="donor-name-small">{donor.name || "Anonymous Donor"}</div>
-                              <div className="donor-stats-small">{donor.donation_count} donations</div>
-                            </div>
-                            <button 
-                              className="thank-btn-small"
-                              onClick={() => {
-                                setSelectedDonor(donor.user_id);
-                                setThankYouTo(donor.name || "Donor");
-                                setShowThankYouModal(true);
-                              }}
-                            >
-                              🙏 Thank Donor
-                            </button>
-                          </div>
-                        ))
-                      )}
+                                <div className="donor-info-small">
+                                  <div className="donor-name-small">{donor.name || "Anonymous Donor"}</div>
+                                  <div className="donor-stats-small">{donor.donation_count} donations</div>
+                                </div>
+                                <button 
+                                  className="thank-btn-small"
+                                  onClick={() => {
+                                    setSelectedDonor(donor.user_id);
+                                    setThankYouTo(donor.name || "Donor");
+                                    setShowThankYouModal(true);
+                                  }}
+                                >
+                                  🙏 Thank Donor
+                                </button>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : activeTab === "messages" ? (
+                  <ChatPanel currentUser={user} apiBase={API} />
+                ) : (
+                  <EmptyState
+                    title="No community endpoint available"
+                    text="This section remains empty until a real community backend feature is added."
+                  />
+                )}
+              </div>
+            </section>
+
+            <section className="rd-bottomGrid">
+              <div className="rd-box">
+                <div className="rd-boxHead">
+                  <div>
+                    <div className="rd-boxTitle">Receiver Summary</div>
+                    <div className="rd-boxSub">
+                      Real data from your profile and approved item listings.
                     </div>
                   </div>
+                  <button className="rd-mapBtn" aria-label="Summary">
+                    📄
+                  </button>
                 </div>
-              )
-            ) : activeTab === "messages" ? (
-              <ChatPanel currentUser={user} apiBase={API} />
-            ) : (
-              <EmptyState
-                title="No community endpoint available"
-                text="This section remains empty until a real community backend feature is added."
-              />
-            )}
-          </div>
-        </section>
 
-        <section className="rd-bottomGrid">
-          <div className="rd-box">
-            <div className="rd-boxHead">
-              <div>
-                <div className="rd-boxTitle">Receiver Summary</div>
-                <div className="rd-boxSub">
-                  Real data from your profile and approved item listings.
+                <div className="rd-mapMock">
+                  <div className="rd-mapPill">
+                    {user?.name || "No name"} | Total available: {allItemsStats.totalApproved} items
+                  </div>
                 </div>
               </div>
-              <button className="rd-mapBtn" aria-label="Summary">
-                📄
-              </button>
-            </div>
 
-            <div className="rd-mapMock">
-              <div className="rd-mapPill">
-                {user?.name || "No name"} | Total available: {allItemsStats.totalApproved} items
+              <div className="rd-box rd-dark">
+                <div className="rd-darkHead">
+                  <span className="rd-darkIco">💛</span>
+                  <div className="rd-darkTitle">Stay Safe</div>
+                </div>
+
+                <ol className="rd-rules">
+                  <li>Verify pickup details before meeting.</li>
+                  <li>Use respectful communication.</li>
+                  <li>Choose safe public locations when possible.</li>
+                </ol>
+
+                <a
+                  className="rd-darkLink"
+                  href="#guidelines"
+                  onClick={(e) => e.preventDefault()}
+                >
+                  Community Safety Guidelines
+                </a>
               </div>
-            </div>
-          </div>
-
-          <div className="rd-box rd-dark">
-            <div className="rd-darkHead">
-              <span className="rd-darkIco">💛</span>
-              <div className="rd-darkTitle">Stay Safe</div>
-            </div>
-
-            <ol className="rd-rules">
-              <li>Verify pickup details before meeting.</li>
-              <li>Use respectful communication.</li>
-              <li>Choose safe public locations when possible.</li>
-            </ol>
-
-            <a
-              className="rd-darkLink"
-              href="#guidelines"
-              onClick={(e) => e.preventDefault()}
-            >
-              Community Safety Guidelines
-            </a>
-          </div>
-        </section>
+            </section>
+          </>
+        )}
       </main>
 
       {/* Thank You Modal */}
