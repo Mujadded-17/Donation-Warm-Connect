@@ -46,6 +46,7 @@ type DonationItem = {
   item_title?: string;
   description?: string;
   item_desc?: string;
+  images?: string;
   image_url?: string;
   image?: string;
   status?: string;
@@ -268,6 +269,7 @@ export default function DonorDashboard(): JSX.Element {
           item.item_name || item.title || item.item_title || "Untitled Donation",
         _desc: item.description || item.item_desc || "No description provided.",
         _image:
+          item.images ||
           item.image_url ||
           item.image ||
           "https://via.placeholder.com/600x400?text=No+Image",
@@ -935,6 +937,7 @@ function StatCard({ label, value, sub, icon }: StatCardProps): JSX.Element {
 }
 
 function ListingCard({ item }: ListingCardProps): JSX.Element {
+  const [imageError, setImageError] = useState(false);
   const title = item._title;
   const desc = item._desc;
   const image = item._image;
@@ -945,7 +948,17 @@ function ListingCard({ item }: ListingCardProps): JSX.Element {
   return (
     <div className="dd-listCard">
       <div className="dd-listMedia">
-        <img src={image} alt={title} />
+        {image && !imageError ? (
+          <img
+            src={image}
+            alt={title}
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="dd-listPlaceholder">
+            <span>No Image</span>
+          </div>
+        )}
         <div className="dd-chip">{String(status).toUpperCase()}</div>
       </div>
 

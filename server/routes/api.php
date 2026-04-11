@@ -13,6 +13,9 @@ use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\SavedItemController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\AuthenticatedSessionController;
+use App\Http\Controllers\Auth\EmailVerificationNotificationController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\NewPasswordController;
 
 
 // Public routes
@@ -22,9 +25,14 @@ Route::get('/categories', function () {
     $categories = DB::table('category')->get();
     return response()->json($categories);
 });
+Route::post('/email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
+    ->middleware('throttle:6,1');
 
 Route::post('/register', [RegisteredUserController::class, 'store']);
 Route::post('/login', [AuthenticatedSessionController::class, 'store']);
+
+Route::post('/forgot-password', [PasswordResetLinkController::class, 'store']);
+Route::post('/reset-password', [NewPasswordController::class, 'store']);
 
 // Public story routes (anyone can view stories)
 Route::get('/stories', [StoryController::class, 'index']);
@@ -43,7 +51,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthenticatedSessionController::class, 'destroy']);
 });
 
-Route::middleware(['auth:sanctum', 'check.banned'])->group(function () {
+Route::middleware(['auth:sanctum', 'check.banned', 'verified'])->group(function () {
     Route::get('/me', [AuthenticatedSessionController::class, 'me']);
 
     // Item routes

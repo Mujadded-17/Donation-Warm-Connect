@@ -93,6 +93,18 @@
   color: #666;
 }
 
+.wc-search-submit{
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: inherit;
+  cursor: pointer;
+}
+
 .wc-search input{
   border:0;
   outline:none;

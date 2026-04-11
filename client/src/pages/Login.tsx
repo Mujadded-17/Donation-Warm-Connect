@@ -1,27 +1,76 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { API_URL } from "../config";
 import "../styles/Login.css";
-
-const API = "http://127.0.0.1:8000/api";
 
 export default function Login() {
   const nav = useNavigate();
+  const [searchParams] = useSearchParams();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resending, setResending] = useState(false);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (searchParams.get("verified") === "1") {
+      setMsg("✅ Email verified successfully. You can log in now.");
+      setError("");
+      setNeedsVerification(false);
+    }
+  }, [searchParams]);
+
+  const resendVerification = async () => {
+    if (!email) {
+      setError("Please enter your email first.");
+      return;
+    }
+
+    setResending(true);
     setMsg("");
     setError("");
 
     try {
       const res = await axios.post(
-        `${API}/login`,
+        `${API_URL}/email/verification-notification`,
+        { email },
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+        }
+      );
+
+      setMsg(res.data?.message || "Verification email sent successfully.");
+    } catch (err: unknown) {
+      if (axios.isAxiosError(err)) {
+        const backendMessage = (
+          err.response?.data as { message?: string } | undefined
+        )?.message;
+
+        setError(backendMessage || "Failed to resend verification email.");
+      } else {
+        setError("Failed to resend verification email.");
+      }
+    } finally {
+      setResending(false);
+    }
+  };
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg("");
+    setError("");
+    setNeedsVerification(false);
+
+    try {
+      const res = await axios.post(
+        `${API_URL}/login`,
         { email, password },
         {
           headers: {
@@ -42,9 +91,37 @@ export default function Login() {
       } else {
         setError(res.data?.message || "Login failed");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err);
-      setError(err?.response?.data?.message || "Login failed. Check backend.");
+
+      if (axios.isAxiosError(err)) {
+        const status = err.response?.status;
+        const responseData = err.response?.data as
+          | { message?: string; requires_verification?: boolean }
+          | undefined;
+
+        if (responseData?.requires_verification) {
+          setNeedsVerification(true);
+          setError(
+            responseData.message ||
+              "Please verify your email before logging in."
+          );
+        } else if (!err.response) {
+          setError("Cannot reach backend server. Please try again.");
+        } else if (status === 401) {
+          setError(responseData?.message || "Invalid email or password.");
+        } else if (status === 403) {
+          setError(responseData?.message || "Access denied.");
+        } else if (status === 429) {
+          setError("Too many requests. Please wait a minute and try again.");
+        } else {
+          setError(responseData?.message || `Login failed (HTTP ${status}).`);
+        }
+
+        return;
+      }
+
+      setError("Login failed. Check backend.");
     }
   };
 
@@ -53,6 +130,9 @@ export default function Login() {
       <div className="auth-shell">
         <div className="auth-panel auth-panel-left">
           <h2 className="auth-hero-title">Welcome Back</h2>
+          <p className="auth-hero-sub">
+            Log in to continue helping others through WarmConnect.
+          </p>
         </div>
 
         <div className="auth-panel auth-panel-right">
@@ -81,6 +161,27 @@ export default function Login() {
                 Login
               </button>
             </form>
+
+            {needsVerification && (
+              <div className="verification-box">
+                <p className="verification-text">
+                  Your account is not verified yet. Click below to resend the
+                  verification email.
+                </p>
+
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={resendVerification}
+                  disabled={resending}
+                >
+                  {resending ? "Sending..." : "Resend Verification Email"}
+                </button>
+              </div>
+            )}
+            <p style={{ marginTop: "10px" }}>
+               <Link to="/forgot-password">Forgot Password?</Link>
+            </p>
 
             <p>
               New user? <Link to="/register">Register</Link>

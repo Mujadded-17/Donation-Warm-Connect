@@ -2,11 +2,12 @@
 
 namespace App\Models;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     use HasApiTokens, Notifiable;
 
@@ -24,7 +25,8 @@ class User extends Authenticatable
         'profile_url',
         'is_banned',
         'ban_reason',
-        'banned_at'
+        'banned_at',
+        'email_verified_at',
     ];
 
     protected $hidden = [
@@ -34,6 +36,7 @@ class User extends Authenticatable
     protected $casts = [
         'is_banned' => 'boolean',
         'banned_at' => 'datetime',
+        'email_verified_at' => 'datetime',
     ];
 
     public function getAuthPassword()

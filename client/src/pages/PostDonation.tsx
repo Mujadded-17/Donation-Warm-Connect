@@ -77,6 +77,13 @@ export default function PostDonation() {
     fileInputRef.current?.click();
   };
 
+  const handleImageKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      handleImageClick();
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -253,14 +260,24 @@ export default function PostDonation() {
               Item Image <span className="required">*</span>
             </label>
 
-            <div className="image-upload-container" onClick={handleImageClick}>
+            <div
+              className="image-upload-area"
+              onClick={handleImageClick}
+              role="button"
+              tabIndex={0}
+              onKeyDown={handleImageKeyDown}
+              aria-label="Upload donation image"
+            >
               {imagePreview ? (
-                <img src={imagePreview} alt="Preview" className="image-preview" />
+                <>
+                  <img src={imagePreview} alt="Preview" className="image-preview" />
+                  <div className="image-upload-overlay">Click to change image</div>
+                </>
               ) : (
-                <div className="image-upload-placeholder">
+                <div className="image-placeholder">
                   <span className="upload-icon">📷</span>
-                  <p>Click to upload image</p>
-                  <small>PNG, JPG, JPEG up to 10MB</small>
+                  <p className="upload-text">Click to upload image</p>
+                  <small className="upload-hint">PNG, JPG, JPEG up to 10MB</small>
                 </div>
               )}
             </div>
@@ -270,7 +287,7 @@ export default function PostDonation() {
               type="file"
               accept="image/*"
               onChange={handleImageChange}
-              style={{ display: "none" }}
+              className="hidden-file-input"
             />
           </div>
 

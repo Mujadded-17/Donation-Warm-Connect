@@ -33,51 +33,60 @@ class AuthenticatedSessionController extends Controller
     }
 
     public function store(Request $request)
-    {
-        $this->ensureBanColumns();
+{
+    $this->ensureBanColumns();
 
-        $request->validate([
-            'email' => ['required', 'email'],
-            'password' => ['required'],
-        ]);
+    $request->validate([
+        'email' => ['required', 'email'],
+        'password' => ['required'],
+    ]);
 
-        $user = User::where('email', $request->email)->first();
+    $user = User::where('email', $request->email)->first();
 
-        if (!$user || !Hash::check($request->password, $user->pass_hash)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid email or password',
-            ], 401);
-        }
-
-        if ((int) $user->is_banned === 1) {
-            return response()->json([
-                'success' => false,
-                'message' => 'You are banned for some illegal or inappropriate behaviours.',
-            ], 403);
-        }
-
-        $user->tokens()->delete();
-
-        $token = $user->createToken('auth_token')->plainTextToken;
-
+    if (!$user || !Hash::check($request->password, $user->pass_hash)) {
         return response()->json([
-            'success' => true,
-            'message' => 'Login successful',
-            'token' => $token,
-            'user' => [
-                'user_id' => $user->user_id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'address' => $user->address,
-                'user_type' => $user->user_type,
-                'profile_url' => $user->profile_url ?? null,
-                'is_banned' => (bool) $user->is_banned,
-                'ban_reason' => $user->ban_reason,
-            ],
-        ]);
+            'success' => false,
+            'message' => 'Invalid email or password',
+        ], 401);
     }
+
+    if ((int) $user->is_banned === 1) {
+        return response()->json([
+            'success' => false,
+            'message' => 'You are banned for some illegal or inappropriate behaviours.',
+        ], 403);
+    }
+
+    if (! $user->hasVerifiedEmail()) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Please verify your email before logging in.',
+            'requires_verification' => true,
+        ], 403);
+    }
+
+    $user->tokens()->delete();
+
+    $token = $user->createToken('auth_token')->plainTextToken;
+
+    return response()->json([
+        'success' => true,
+        'message' => 'Login successful',
+        'token' => $token,
+        'user' => [
+            'user_id' => $user->user_id,
+            'name' => $user->name,
+            'email' => $user->email,
+            'phone' => $user->phone,
+            'address' => $user->address,
+            'user_type' => $user->user_type,
+            'profile_url' => $user->profile_url ?? null,
+            'is_banned' => (bool) $user->is_banned,
+            'ban_reason' => $user->ban_reason,
+            'email_verified_at' => $user->email_verified_at,
+        ],
+    ]);
+}
 
     public function destroy(Request $request)
     {

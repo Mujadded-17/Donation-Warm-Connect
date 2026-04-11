@@ -42,21 +42,10 @@ class RegisteredUserController extends Controller
 
         event(new Registered($user));
 
-        $token = $user->createToken('auth_token')->plainTextToken;
-
         return response()->json([
             'success' => true,
-            'message' => 'User registered successfully',
-            'token' => $token,
-            'user' => [
-                'user_id' => $user->user_id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'phone' => $user->phone,
-                'address' => $user->address,
-                'user_type' => $user->user_type,
-                'profile_url' => $user->profile_url ?? null,
-            ],
+            'message' => 'Registration successful. Please verify your email before logging in.',
+            'requires_verification' => true,
         ], 201);
     }
 }

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "../styles/ExploreNeeds.css";
 
 const API = "http://127.0.0.1:8000/api";
@@ -14,6 +14,7 @@ type Item = {
   donor_id: number;
   images?: string;
   donor_verified?: boolean | number | string;
+  donor_name?: string;
 };
 
 type Category = {
@@ -49,6 +50,7 @@ const getStoredUser = (): User | null => {
 
 function ItemsPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const currentUser = getStoredUser();
   const isAdminUser =
     String(currentUser?.user_type || "").toLowerCase() === "admin" ||
@@ -61,8 +63,13 @@ function ItemsPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(true);
   const [requestingId, setRequestingId] = useState<number | null>(null);
-  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
-  const [verifiedOnly, setVerifiedOnly] = useState(false);
+  const [viewMode] = useState<"grid" | "list">("grid");
+  const [verifiedOnly] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setSearch(params.get("q") || "");
+  }, [location.search]);
 
   useEffect(() => {
     const loadData = async () => {
@@ -310,9 +317,6 @@ function ItemsPage() {
               })}
             </div>
           </div>
-
-          
-
         </aside>
 
         <main className="explore-content">
@@ -327,16 +331,12 @@ function ItemsPage() {
                 aria-label="Search items"
               />
             </div>
-
-         
           </div>
 
           <div className="explore-header">
             <div>
               <h1 className="explore-heading">Donations Near You</h1>
-              <p className="explore-subtext">
-                {exploreSubtitle}
-              </p>
+              <p className="explore-subtext">{exploreSubtitle}</p>
             </div>
 
             <div className="results-count">
@@ -389,12 +389,12 @@ function ItemsPage() {
                     <div className="card-footer">
                       <div className="card-donor">
                         <div className="card-avatar">
-                          {(item.title?.charAt(0) || "D").toUpperCase()}
+                          {(item.donor_name?.charAt(0) || "D").toUpperCase()}
                         </div>
 
                         <div className="card-donor-text">
                           <span className="card-donor-name">
-                            Community Donor
+                            {item.donor_name?.trim() || "Community Donor"}
                           </span>
                           <span className="card-donor-status">
                             {item.status === "approved"
