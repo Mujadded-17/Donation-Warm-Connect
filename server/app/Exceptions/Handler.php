@@ -3,6 +3,10 @@
 namespace App\Exceptions;
 
 use Illuminate\Foundation\Exceptions\Handler as ExceptionHandler;
+use Illuminate\Auth\AuthenticationException;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Symfony\Component\HttpKernel\Exception\HttpExceptionInterface;
 use Throwable;
 
 class Handler extends ExceptionHandler
@@ -48,12 +52,30 @@ class Handler extends ExceptionHandler
      */
     public function render($request, Throwable $exception)
     {
-        $message = $this->getMessage($exception);
+        if ($request->expectsJson()) {
+            $status = 500;
+            $message = $this->getMessage($exception);
 
-        return response()->json([
-            'success' => false,
-            'message' => $message,
-        ], 200);
+            if ($exception instanceof AuthenticationException) {
+                $status = 401;
+            } elseif ($exception instanceof ValidationException) {
+                $status = 422;
+            } elseif ($exception instanceof ModelNotFoundException) {
+                $status = 404;
+            } elseif ($exception instanceof HttpExceptionInterface) {
+                $status = $exception->getStatusCode();
+                if (!$message) {
+                    $message = $exception->getMessage();
+                }
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $message ?: 'An unexpected error occurred.',
+            ], $status);
+        }
+
+        return parent::render($request, $exception);
     }
 
 

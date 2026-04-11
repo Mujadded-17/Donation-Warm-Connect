@@ -2,6 +2,8 @@ import React, { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import "../styles/navbar.css";
 
+const API = "http://127.0.0.1:8000/api";
+
 type User = {
   name?: string;
   [key: string]: unknown;
@@ -10,6 +12,13 @@ type User = {
 export default function Navbar(): JSX.Element {
   const navigate = useNavigate();
   const [user, setUser] = useState<User>(null);
+
+  const clearAuthState = (): void => {
+    localStorage.removeItem("user");
+    localStorage.removeItem("token");
+    window.dispatchEvent(new Event("auth-changed"));
+    navigate("/login");
+  };
 
   const readUser = (): User => {
     try {
@@ -39,7 +48,7 @@ export default function Navbar(): JSX.Element {
       const token = localStorage.getItem("token");
 
       if (token) {
-        await fetch("http://127.0.0.1:8000/api/logout", {
+        await fetch(`${API}/logout`, {
           method: "POST",
           headers: {
             Accept: "application/json",
@@ -50,12 +59,82 @@ export default function Navbar(): JSX.Element {
     } catch (error) {
       console.error("Logout request failed:", error);
     } finally {
-      localStorage.removeItem("user");
-      localStorage.removeItem("token");
-      window.dispatchEvent(new Event("auth-changed"));
-      navigate("/login");
+      clearAuthState();
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const checkSession = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) {
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API}/me`, {
+          headers: {
+            Accept: "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (cancelled) {
+          return;
+        }
+
+        if (response.status === 401) {
+          clearAuthState();
+          return;
+        }
+
+        if (response.status === 403) {
+          const payload = await response.json().catch(() => ({}));
+          const message = String(payload?.message || "").toLowerCase();
+          if (message.includes("banned")) {
+            clearAuthState();
+          }
+          return;
+        }
+
+        if (response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          const success = payload?.success;
+          const message = String(payload?.message || "").toLowerCase();
+
+          if (success === false && (message.includes("unauthenticated") || message.includes("banned"))) {
+            clearAuthState();
+          }
+        }
+      } catch {
+        // Ignore transient network failures.
+      }
+    };
+
+    const onFocus = () => {
+      void checkSession();
+    };
+
+    const onStorage = () => {
+      void checkSession();
+    };
+
+    void checkSession();
+    const interval = window.setInterval(() => {
+      void checkSession();
+    }, 2000);
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
+    };
+  }, [user]);
 
   return (
     <header className="wc-nav">

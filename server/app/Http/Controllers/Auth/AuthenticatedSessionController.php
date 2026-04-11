@@ -6,11 +6,36 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Database\Schema\Blueprint;
 
 class AuthenticatedSessionController extends Controller
 {
+    private function ensureBanColumns(): void
+    {
+        if (!Schema::hasColumn('user', 'is_banned')) {
+            Schema::table('user', function (Blueprint $table) {
+                $table->boolean('is_banned')->default(false)->after('profile_url');
+            });
+        }
+
+        if (!Schema::hasColumn('user', 'ban_reason')) {
+            Schema::table('user', function (Blueprint $table) {
+                $table->string('ban_reason', 255)->nullable()->after('is_banned');
+            });
+        }
+
+        if (!Schema::hasColumn('user', 'banned_at')) {
+            Schema::table('user', function (Blueprint $table) {
+                $table->dateTime('banned_at')->nullable()->after('ban_reason');
+            });
+        }
+    }
+
     public function store(Request $request)
     {
+        $this->ensureBanColumns();
+
         $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required'],
@@ -23,6 +48,13 @@ class AuthenticatedSessionController extends Controller
                 'success' => false,
                 'message' => 'Invalid email or password',
             ], 401);
+        }
+
+        if ((int) $user->is_banned === 1) {
+            return response()->json([
+                'success' => false,
+                'message' => 'You are banned for some illegal or inappropriate behaviours.',
+            ], 403);
         }
 
         $user->tokens()->delete();
@@ -41,6 +73,8 @@ class AuthenticatedSessionController extends Controller
                 'address' => $user->address,
                 'user_type' => $user->user_type,
                 'profile_url' => $user->profile_url ?? null,
+                'is_banned' => (bool) $user->is_banned,
+                'ban_reason' => $user->ban_reason,
             ],
         ]);
     }
@@ -61,6 +95,8 @@ class AuthenticatedSessionController extends Controller
 
     public function me(Request $request)
     {
+        $this->ensureBanColumns();
+
         $user = $request->user();
 
         if (!$user) {
@@ -80,6 +116,8 @@ class AuthenticatedSessionController extends Controller
                 'address' => $user->address,
                 'user_type' => $user->user_type,
                 'profile_url' => $user->profile_url ?? null,
+                'is_banned' => (bool) $user->is_banned,
+                'ban_reason' => $user->ban_reason,
             ],
         ]);
     }

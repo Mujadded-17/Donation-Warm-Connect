@@ -81,6 +81,7 @@ type RequestNotificationCardProps = {
   isUpdating: boolean;
   onApprove: () => void;
   onReject: () => void;
+  onComplete?: () => void;
 };
 
 type NotificationItem = {
@@ -408,6 +409,49 @@ export default function DonorDashboard(): JSX.Element {
       setActioningRequestId(null);
     }
   };
+  const handleMarkAsCompleted = async (donationId: number) => {
+  const token = localStorage.getItem("token") || "";
+  
+  try {
+    setActioningRequestId(donationId);
+    
+    await axios.put(
+      `${API}/donations/${donationId}/complete`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    alert("✅ Donation marked as completed! It will now appear in Past Gifts.");
+    
+    // Refresh the incoming requests to update the status
+    const requestRes = await axios.get(
+      `${API}/donations/incoming/${storedUser?.user_id}`,
+      {
+        headers: {
+          Accept: "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    const payload = requestRes.data?.requests;
+    const requests = Array.isArray(payload) ? payload : [];
+    setIncomingRequests(requests);
+    setFilteredRequests(requests);
+    
+  } catch (error) {
+    console.error("Failed to mark as completed:", error);
+    alert("Failed to mark as completed");
+  } finally {
+    setActioningRequestId(null);
+  }
+};
 
   const clearSearch = () => {
     setSearchTerm("");
@@ -587,12 +631,12 @@ export default function DonorDashboard(): JSX.Element {
                   title={
                     donationSubTab === "active"
                       ? searchTerm ? "No matching active donations found" : "No active donations found"
-                      : searchTerm ? "No matching past donations found" : "No past donations found"
+                      : searchTerm ? "No matching past donations found" : "No past gifts found"
                   }
                   text={
                     donationSubTab === "active"
                       ? searchTerm ? `No donations match "${searchTerm}" in ${searchType}` : "You haven't posted any active donations yet."
-                      : searchTerm ? `No past donations match "${searchTerm}" in ${searchType}` : "No completed donations yet."
+                      : searchTerm ? `No past gifts match "${searchTerm}" in ${searchType}` : "No completed donations yet. When you successfully donate items, they will appear here."
                   }
                 />
               )
@@ -614,6 +658,8 @@ export default function DonorDashboard(): JSX.Element {
                     onReject={() =>
                       handleRequestDecision(request.donation_id, "rejected")
                     }
+                    onComplete={() => handleMarkAsCompleted(request.donation_id)} 
+
                   />
                 ))
               ) : loadingNotifications ? (
@@ -938,12 +984,12 @@ function ListingCard({ item }: ListingCardProps): JSX.Element {
     </div>
   );
 }
-
 function RequestNotificationCard({
   request,
   isUpdating,
   onApprove,
   onReject,
+  onComplete,
 }: RequestNotificationCardProps): JSX.Element {
   const status = String(request.donation_status || "requested").toLowerCase();
   const statusLabel = status.toUpperCase();
@@ -982,30 +1028,41 @@ function RequestNotificationCard({
         </div>
       </div>
 
-      {canDecide && (
-        <div className="dd-requestActions">
+      <div className="dd-requestActions">
+        {canDecide && (
+          <>
+            <button
+              type="button"
+              className="dd-requestApprove"
+              disabled={isUpdating}
+              onClick={onApprove}
+            >
+              {isUpdating ? "Updating..." : "Permit"}
+            </button>
+            <button
+              type="button"
+              className="dd-requestReject"
+              disabled={isUpdating}
+              onClick={onReject}
+            >
+              Reject
+            </button>
+          </>
+        )}
+        {status === "approved" && onComplete && (
           <button
             type="button"
-            className="dd-requestApprove"
+            className="dd-completeBtn"
+            onClick={onComplete}
             disabled={isUpdating}
-            onClick={onApprove}
           >
-            {isUpdating ? "Updating..." : "Permit"}
+            {isUpdating ? "Updating..." : "✓ Mark Completed"}
           </button>
-          <button
-            type="button"
-            className="dd-requestReject"
-            disabled={isUpdating}
-            onClick={onReject}
-          >
-            Reject
-          </button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   );
 }
-
 function EmptyState({ title, text }: EmptyStateProps): JSX.Element {
   return (
     <div className="dd-empty">

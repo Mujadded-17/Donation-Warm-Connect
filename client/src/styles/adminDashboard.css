@@ -305,6 +305,406 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.ad-statusPill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  border: 1px solid transparent;
+}
+
+.ad-statusPill.is-pending {
+  background: #fff7ed;
+  color: #b45309;
+  border-color: #f5d0a8;
+}
+
+.ad-statusPill.is-approved {
+  background: #ecfdf5;
+  color: #047857;
+  border-color: #bbf7d0;
+}
+
+.ad-statusPill.is-rejected {
+  background: #fef2f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+
+.ad-statusPill.is-unknown {
+  background: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+
+.ad-sectionPanel {
+  margin-top: 20px;
+}
+
+.ad-sectionHeaderRow {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.ad-sectionHeaderRow h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.ad-sectionHeaderRow p {
+  margin: 8px 0 0;
+  color: var(--ad-muted);
+}
+
+.ad-sectionActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.ad-filterRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ad-filterBtn {
+  border: 1px solid var(--ad-line);
+  background: #fff;
+  color: #243246;
+  border-radius: 999px;
+  padding: 10px 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ad-filterBtn span {
+  min-width: 24px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eef4ff;
+  color: #1f4db8;
+  font-size: 12px;
+}
+
+.ad-filterBtn.isActive {
+  background: var(--ad-accent-soft);
+  border-color: #b9cef7;
+  color: #0d3f9d;
+}
+
+.ad-filterBtn.isActive span {
+  background: #fff;
+  color: #0d3f9d;
+}
+
+.ad-itemList--full {
+  margin-top: 0;
+}
+
+.ad-infoGrid,
+.ad-settingsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.ad-infoCard,
+.ad-settingCard {
+  border: 1px solid var(--ad-line);
+  border-radius: 14px;
+  padding: 16px;
+  background: #fbfdff;
+}
+
+.ad-infoCard h3,
+.ad-settingCard strong {
+  display: block;
+  margin: 10px 0 0;
+  font-size: 18px;
+  color: #1b2d45;
+}
+
+.ad-infoCard p,
+.ad-settingCard p {
+  margin: 8px 0 0;
+  color: var(--ad-muted);
+  line-height: 1.55;
+}
+
+.ad-infoLabel,
+.ad-settingCard span {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #71839c;
+}
+
+.ad-shortcutGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.ad-shortcutCard {
+  border: 1px solid var(--ad-line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.ad-shortcutCard strong {
+  display: block;
+  font-size: 14px;
+  color: #1b2d45;
+}
+
+.ad-shortcutCard small {
+  display: block;
+  margin-top: 4px;
+  color: var(--ad-muted);
+}
+
+.ad-shortcutIcon {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--ad-accent-soft);
+  flex-shrink: 0;
+}
+
+.card-admin-note {
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: #eef4ff;
+  border: 1px solid #cddcf8;
+  color: #3559a6;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.ad-user-shell {
+  margin-top: 12px;
+  height: min(72vh, calc(100vh - 270px));
+  min-height: 560px;
+  align-items: stretch;
+}
+
+.ad-user-list {
+  gap: 12px;
+}
+
+.ad-user-search {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.ad-user-searchInput {
+  width: 100%;
+  border: 1px solid var(--ad-line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 14px;
+  outline: none;
+  background: #fff;
+}
+
+.ad-user-searchHint {
+  font-size: 12px;
+  color: var(--ad-muted);
+  line-height: 1.5;
+}
+
+.ad-userRow {
+  border: 1px solid var(--ad-line);
+  border-radius: 14px;
+  padding: 12px;
+  background: #fff;
+  display: grid;
+  gap: 10px;
+}
+
+.ad-userRow.isActive {
+  border-color: #b9cef7;
+  background: #f7faff;
+}
+
+.ad-userRowMain {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ad-userRowTop {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.ad-userRowMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--ad-muted);
+}
+
+.ad-userRowActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.ad-userActionBtn {
+  border: 1px solid var(--ad-line);
+  background: #fff;
+  color: #233246;
+  border-radius: 10px;
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.ad-userActionBtn.isDanger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.ad-userActionBtn.isSecondary {
+  background: #ecfdf5;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+.ad-userActionBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ad-userBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.6px;
+}
+
+.ad-userBadge.isActive {
+  background: #ecfdf5;
+  color: #047857;
+}
+
+.ad-userBadge.isBanned {
+  background: #fef2f2;
+  color: #b91c1c;
+}
+
+.ad-chatPanel {
+  min-height: 620px;
+  height: 100%;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+}
+
+.ad-chatHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ad-chatHeadActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.ad-banNotice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 12px;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #991b1b;
+}
+
+.ad-banNotice strong {
+  font-size: 13px;
+}
+
+.ad-banNotice span {
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.ad-chatEmpty {
+  display: grid;
+  place-items: center;
+  min-height: 520px;
+  background: #f7f8fa;
+}
+
+.ad-user-shell .cp-list,
+.ad-user-shell .cp-chat {
+  min-height: 0;
+}
+
+.ad-user-shell .cp-messages {
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.ad-user-shell .cp-composer {
+  position: sticky;
+  bottom: 0;
+  z-index: 2;
+  box-shadow: 0 -8px 24px rgba(20, 32, 51, 0.08);
 }
 
 .ad-approveBtn,
@@ -517,6 +917,25 @@
     flex-direction: column;
     align-items: flex-start;
   }
+
+  .ad-user-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-infoGrid,
+  .ad-settingsGrid,
+  .ad-shortcutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .ad-sectionHeaderRow {
+    flex-direction: column;
+  }
+
+  .ad-chatHead,
+  .ad-userRowTop {
+    flex-direction: column;
+  }
   
   .ad-story-actions {
     flex-direction: column;
@@ -534,5 +953,15 @@
   
   .ad-topbar {
     flex-direction: column;
+  }
+
+  .ad-sectionActions {
+    width: 100%;
+  }
+
+  .ad-sectionActions .ad-ghostBtn,
+  .ad-shortcutCard,
+  .ad-filterBtn {
+    width: 100%;
   }
 }

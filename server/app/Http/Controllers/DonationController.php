@@ -292,8 +292,35 @@ class DonationController extends Controller
         return response()->json([
             'success' => true,
             'requests' => $requests
-        ]);
+   ]);
     }
+     // Mark donation as completed
+      public function markAsCompleted($donationId)
+{
+    $donation = DB::table('donation')->where('donation_id', $donationId)->first();
+    
+    if (!$donation) {
+        return response()->json([
+            'success' => false,
+            'message' => 'Donation not found'
+        ], 404);
+    }
+    
+    // Update donation status
+    DB::table('donation')
+        ->where('donation_id', $donationId)
+        ->update(['status' => 'completed']);
+    
+    // Update item status
+    DB::table('item')
+        ->where('item_id', $donation->item_id)
+        ->update(['status' => 'completed']);
+    
+    return response()->json([
+        'success' => true,
+        'message' => 'Donation marked as completed'
+    ]);
+}
 
     // Cancel a request (receiver cancels before donor responds)
     public function cancelRequest($donationId)
@@ -322,6 +349,7 @@ class DonationController extends Controller
             'message' => 'Request cancelled successfully'
         ]);
     }
+    
 
     // ========== ADMIN METHODS ==========
 
